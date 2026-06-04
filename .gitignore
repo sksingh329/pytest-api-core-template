@@ -216,3 +216,9 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# pytest-api-core — generated reports (keep the directory, ignore HTML files)
+reports/**/*.html
+
+# Local secrets — never commit
+.env
