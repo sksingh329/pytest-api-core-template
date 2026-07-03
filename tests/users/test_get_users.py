@@ -18,8 +18,7 @@ SEED_USER_ID = 1001   # always present on gorest.in
 
 # ── List users ───────────────────────────────────────────────────────────────
 
-@pytest.mark.smoke
-@pytest.mark.readonly
+@pytest.mark.user
 class TestListUsers:
 
     def test_returns_200(self, api_client):
@@ -29,8 +28,7 @@ class TestListUsers:
 
 # ── Single user ──────────────────────────────────────────────────────────────
 
-@pytest.mark.smoke
-@pytest.mark.readonly
+@pytest.mark.user
 class TestGetSingleUser:
 
     def test_returns_200_for_seed_user(self, api_client):
