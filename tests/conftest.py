@@ -46,6 +46,24 @@ def api_client(api_config):
 
 
 @pytest.fixture(scope="session")
+def blocked_api_client(api_config):
+    """
+    Client authenticated with an intentionally invalid Bearer token, used to
+    exercise negative auth tests (expects 401 responses from gorest.in).
+    """
+    token = get_env("BEARER_BLOCKED_TOKEN", required=True)
+    client = APIClient(
+        base_url=api_config["base_url"],
+        auth=BearerAuth(token),
+        timeout=api_config.get("timeout", 30),
+        verify_ssl=api_config.get("verify_ssl", True),
+        default_headers=api_config.get("headers"),
+    )
+    yield client
+    client.close()
+
+
+@pytest.fixture(scope="session")
 def base_url(api_config):
     """Convenience fixture — exposes the resolved base URL as a plain string."""
     return api_config["base_url"]
@@ -62,4 +80,21 @@ def new_user_payload():
         "gender": "male",
         "status": "active",
     }
+
+
+@pytest.fixture
+def created_user(api_client, new_user_payload):
+    """
+    Creates a user via the API and deletes it after the test, so every test
+    that needs an existing (or just-created) user can depend on this alone.
+
+    Yields the raw creation APIResponse — tests that only need the resulting
+    data can call `.json()` on it.
+    """
+    response = api_client.post("/public/v2/users", json=new_user_payload)
+    assert response.status_code == 201, (
+        f"Setup failed creating user: {response.status_code} {response.response_body_text()}"
+    )
+    yield response
+    api_client.delete(f"/public/v2/users/{response.json()['id']}")
 
