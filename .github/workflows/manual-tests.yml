@@ -10,6 +10,9 @@ on:
         required: false
         default: ''
 
+permissions:
+  contents: write
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -41,6 +44,20 @@ jobs:
           path: reports/
           if-no-files-found: ignore
 
+      - name: Publish report to GitHub Pages
+        if: always()
+        id: publish-report
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: reports
+          destination_dir: runs/${{ github.run_id }}-${{ github.run_attempt }}
+          keep_files: true
+
       - name: Add report link to job summary
         if: always()
-        run: echo "📄 API HTML report uploaded as artifact **api-test-report-${{ github.run_id }}-${{ github.run_attempt }}** (see the Artifacts section below)." >> "$GITHUB_STEP_SUMMARY"
+        run: |
+          report_file=$(find reports -name '*.html' -print -quit)
+          report_path="runs/${{ github.run_id }}-${{ github.run_attempt }}/${report_file#reports/}"
+          report_url="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/${report_path}"
+          echo "📄 [API HTML report]($report_url)" >> "$GITHUB_STEP_SUMMARY"
