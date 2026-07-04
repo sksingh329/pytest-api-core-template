@@ -5,10 +5,21 @@ The pytest-api-core plugin auto-registers `api_config` and a default
 `api_client` fixture.  Override `api_client` here to inject the Bearer
 token from the .env file so every authenticated test gets it for free.
 """
+import random
+
 import pytest
 from pytest_api_core.auth.auth_handlers import BearerAuth
 from pytest_api_core.client.api_client import APIClient
 from pytest_api_core.config.env_loader import get_env
+from faker import Faker
+
+faker = Faker()
+
+
+@pytest.fixture
+def faker_seed():
+    """Randomize Faker's seed per test instead of the plugin's fixed default (0)."""
+    return random.random()
 
 
 # ── Authenticated client (session-scoped) ────────────────────────────────────
@@ -34,8 +45,6 @@ def api_client(api_config):
     client.close()
 
 
-# ── Shared test data ─────────────────────────────────────────────────────────
-
 @pytest.fixture(scope="session")
 def base_url(api_config):
     """Convenience fixture — exposes the resolved base URL as a plain string."""
@@ -43,24 +52,14 @@ def base_url(api_config):
 
 
 @pytest.fixture
-def new_user_payload(faker_data):
-    """
-    Generates a unique user payload.
-
-    Replace `faker_data` with any unique-name/email strategy you prefer.
-    The simplest approach (used here) relies on pytest's built-in `tmp_path`
-    or a counter; gorest.in rejects duplicate emails with 422.
-    """
-    import uuid
-    uid = uuid.uuid4().hex[:8]
+def new_user_payload():
+    first = faker.first_name_male()
+    last =  faker.last_name_male()
+    uid = faker.uuid4()[:8]
     return {
-        "name": f"Test User {uid}",
-        "email": f"testuser_{uid}@example.com",
+        "name": f"{first} {last}",
+        "email": f"{first.lower()}.{last.lower()}.{uid}@{faker.free_email_domain()}",
         "gender": "male",
         "status": "active",
     }
 
-
-# ── Seed user IDs (pre-loaded on gorest.in) ──────────────────────────────────
-
-SEED_USER_ID = 1001   # always present; safe to GET/PUT/PATCH/DELETE in tests

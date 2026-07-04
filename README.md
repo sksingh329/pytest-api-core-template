@@ -4,8 +4,7 @@
 
 ## Features
 
-- Full CRUD test coverage for `/public/v2/users`
-- Auth, validation, and error-scenario tests
+- Example test for `/public/v2/users` (more CRUD examples coming)
 - Environment-aware config (`dev` / `staging` / `prod`)
 - `.env` file support for secrets
 - Self-contained HTML test report with charts and request/response details
@@ -53,10 +52,7 @@ The HTML report is written to `reports/dev/report_<timestamp>.html`.
 ├── tests/
 │   ├── conftest.py          # Session-scoped api_client with BearerAuth
 │   └── users/
-│       ├── test_get_users.py
-│       ├── test_create_user.py
-│       ├── test_update_user.py
-│       └── test_delete_user.py
+│       └── test_create_user.py
 ├── reports/                 # Generated HTML reports (git-ignored)
 ├── .env.example             # Copy to .env and fill in secrets
 ├── pytest.ini               # Framework + report + logging config
@@ -91,8 +87,7 @@ The HTML report is written to `reports/dev/report_<timestamp>.html`.
 |--------------|--------------------------------------------|
 | `smoke`      | Fast sanity checks — run on every commit   |
 | `regression` | Full regression suite                      |
-| `auth`       | Tests that require a Bearer token          |
-| `readonly`   | Read-only tests (no auth needed)           |
+| `user`       | Tests covering the `/public/v2/users` API  |
 
 ---
 
