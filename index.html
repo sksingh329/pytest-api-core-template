@@ -6,6 +6,8 @@
 <style>
   body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 2rem; background: #0d1117; color: #e6edf3; }
   h1 { font-size: 1.4rem; }
+  input#search { margin-top: 1rem; padding: 0.5rem 0.75rem; width: 100%; max-width: 24rem;
+    background: #161b22; border: 1px solid #30363d; border-radius: 6px; color: #e6edf3; }
   table { border-collapse: collapse; width: 100%; margin-top: 1rem; }
   th, td { text-align: left; padding: 0.5rem 0.75rem; border-bottom: 1px solid #30363d; }
   a { color: #58a6ff; text-decoration: none; }
@@ -14,10 +16,20 @@
 </head>
 <body>
 <h1>API Test Reports</h1>
-<p>7 report(s) published. Newest first.</p>
-<table>
+<p>8 report(s) published (showing up to 200 most recent). Newest first.</p>
+<input id="search" type="text" placeholder="Filter by report name or run id...">
+<table id="report-table">
 <tr><th>Report</th><th>Run</th><th>Published</th></tr>
-<tr><td><a href="/runs/28716406369-1/dev/report_20260704_185820.html">report_20260704_185820.html</a></td><td>28716406369-1</td><td>2026-07-04 18:58 UTC</td></tr><tr><td><a href="/runs/28716373280-1/dev/report_20260704_185659.html">report_20260704_185659.html</a></td><td>28716373280-1</td><td>2026-07-04 18:58 UTC</td></tr><tr><td><a href="/runs/28716366894-1/dev/report_20260704_185641.html">report_20260704_185641.html</a></td><td>28716366894-1</td><td>2026-07-04 18:58 UTC</td></tr><tr><td><a href="/runs/28716366839-1/dev/report_20260704_185642.html">report_20260704_185642.html</a></td><td>28716366839-1</td><td>2026-07-04 18:58 UTC</td></tr><tr><td><a href="/runs/28716258825-1/dev/report_20260704_185221.html">report_20260704_185221.html</a></td><td>28716258825-1</td><td>2026-07-04 18:58 UTC</td></tr><tr><td><a href="/runs/28715942257-1/dev/report_20260704_184027.html">report_20260704_184027.html</a></td><td>28715942257-1</td><td>2026-07-04 18:58 UTC</td></tr><tr><td><a href="/runs/28715643831-1/dev/report_20260704_182908.html">report_20260704_182908.html</a></td><td>28715643831-1</td><td>2026-07-04 18:58 UTC</td></tr>
+<tr><td><a href="/runs/28716714146-1/dev/report_20260704_191020.html">report_20260704_191020.html</a></td><td>28716714146-1</td><td>2026-07-04 19:10 UTC</td></tr><tr><td><a href="/runs/28716406369-1/dev/report_20260704_185820.html">report_20260704_185820.html</a></td><td>28716406369-1</td><td>2026-07-04 19:10 UTC</td></tr><tr><td><a href="/runs/28716373280-1/dev/report_20260704_185659.html">report_20260704_185659.html</a></td><td>28716373280-1</td><td>2026-07-04 19:10 UTC</td></tr><tr><td><a href="/runs/28716366894-1/dev/report_20260704_185641.html">report_20260704_185641.html</a></td><td>28716366894-1</td><td>2026-07-04 19:10 UTC</td></tr><tr><td><a href="/runs/28716366839-1/dev/report_20260704_185642.html">report_20260704_185642.html</a></td><td>28716366839-1</td><td>2026-07-04 19:10 UTC</td></tr><tr><td><a href="/runs/28716258825-1/dev/report_20260704_185221.html">report_20260704_185221.html</a></td><td>28716258825-1</td><td>2026-07-04 19:10 UTC</td></tr><tr><td><a href="/runs/28715942257-1/dev/report_20260704_184027.html">report_20260704_184027.html</a></td><td>28715942257-1</td><td>2026-07-04 19:10 UTC</td></tr><tr><td><a href="/runs/28715643831-1/dev/report_20260704_182908.html">report_20260704_182908.html</a></td><td>28715643831-1</td><td>2026-07-04 19:10 UTC</td></tr>
 </table>
+<script>
+  document.getElementById('search').addEventListener('input', function (e) {
+    var q = e.target.value.toLowerCase();
+    var rows = document.querySelectorAll('#report-table tr:not(:first-child)');
+    rows.forEach(function (row) {
+      row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+    });
+  });
+</script>
 </body>
 </html>
