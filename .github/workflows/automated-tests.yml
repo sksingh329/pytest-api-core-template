@@ -44,6 +44,10 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: api-test-report
+          name: api-test-report-${{ github.run_id }}-${{ github.run_attempt }}
           path: reports/
           if-no-files-found: ignore
+
+      - name: Add report link to job summary
+        if: always()
+        run: echo "📄 API HTML report uploaded as artifact **api-test-report-${{ github.run_id }}-${{ github.run_attempt }}** (see the Artifacts section below)." >> "$GITHUB_STEP_SUMMARY"
