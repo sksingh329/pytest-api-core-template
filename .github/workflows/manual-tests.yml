@@ -1,0 +1,42 @@
+name: Manual API Tests
+
+# Triggered manually from the Actions tab (or via the API/CLI) — no automatic
+# push/PR trigger. Useful for on-demand runs against a specific branch/marker.
+on:
+  workflow_dispatch:
+    inputs:
+      markers:
+        description: 'pytest -m marker expression to filter tests (leave blank to run all)'
+        required: false
+        default: ''
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    env:
+      BEARER_TOKEN: ${{ secrets.BEARER_TOKEN }}
+      BEARER_BLOCKED_TOKEN: ${{ secrets.BEARER_BLOCKED_TOKEN }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run tests
+        run: pytest ${{ github.event.inputs.markers && format('-m "{0}"', github.event.inputs.markers) || '' }}
+
+      - name: Upload HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-test-report
+          path: reports/
+          if-no-files-found: ignore

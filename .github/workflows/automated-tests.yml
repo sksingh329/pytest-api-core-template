@@ -1,0 +1,49 @@
+name: Automated API Tests
+
+# Runs automatically on every push to any branch, and on every pull-request
+# event (opened/updated/reopened/closed-including-merged) targeting any branch.
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+    branches:
+      - '**'
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - closed
+
+jobs:
+  test:
+    # Skip PRs that were closed without being merged; run for every other event.
+    if: github.event.action != 'closed' || github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+
+    env:
+      BEARER_TOKEN: ${{ secrets.BEARER_TOKEN }}
+      BEARER_BLOCKED_TOKEN: ${{ secrets.BEARER_BLOCKED_TOKEN }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run tests
+        run: pytest
+
+      - name: Upload HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-test-report
+          path: reports/
+          if-no-files-found: ignore
