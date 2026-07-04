@@ -2,18 +2,6 @@ import pytest
 from pytest_api_core.assertions import assert_that
 
 
-"""
-GET /public/v2/users  — list & single-user read tests.
-
-All GETs on gorest.in are public (no auth required), but the session-scoped
-api_client from conftest already carries a Bearer token, so these work fine
-with or without auth.
-
-Endpoints:
-  GET /public/v2/users          — paginated list, filterable
-  GET /public/v2/users/:id      — single user by ID
-"""
-
 USERS_PATH = "/public/v2/users"
 
 @pytest.mark.user
