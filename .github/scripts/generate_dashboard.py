@@ -53,7 +53,7 @@ index_html = f"""<!doctype html>
 <html>
 <head>
 <meta charset="utf-8">
-<title>API Test Reports</title>
+<title>pytest-api-core-template (GoRest.in API) Test Reports</title>
 <style>
   body {{ font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 2rem; background: #0d1117; color: #e6edf3; }}
   h1 {{ font-size: 1.4rem; }}
@@ -66,7 +66,7 @@ index_html = f"""<!doctype html>
 </style>
 </head>
 <body>
-<h1>API Test Reports</h1>
+<h1>pytest-api-core-template (GoRest.in API) Test Reports</h1>
 <p>{len(reports)} report(s) published (showing up to {retention_count} most recent). Newest first.</p>
 <input id="search" type="text" placeholder="Filter by report name or run id...">
 <table id="report-table">

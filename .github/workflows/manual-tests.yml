@@ -15,7 +15,7 @@ permissions:
 
 env:
   # Custom domain configured for GitHub Pages on this repo (CNAME on gh-pages branch)
-  PAGES_BASE_URL: https://githubreports.subodhsingh.in
+  PAGES_BASE_URL: https://githubreports.apicore.template.subodhsingh.in
 
 jobs:
   test:
