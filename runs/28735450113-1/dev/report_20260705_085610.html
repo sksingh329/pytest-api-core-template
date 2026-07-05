@@ -1,0 +1,3188 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>GoRest API Tests</title>
+<style>
+:root {
+  --bg: #f8fafc; --surface: #ffffff; --border: #e2e8f0;
+  --text: #1e293b; --text-muted: #64748b;
+  --pass: #22c55e; --fail: #ef4444; --error: #f97316; --skip: #94a3b8;
+  --code-bg: #0f172a; --code-text: #e2e8f0;
+  --shadow: 0 1px 3px rgba(0,0,0,.1);
+  --method-get: #3b82f6; --method-post: #22c55e; --method-put: #f59e0b;
+  --method-patch: #a855f7; --method-delete: #ef4444; --method-other: #64748b;
+}
+[data-theme="dark"] {
+  --bg: #0f172a; --surface: #1e293b; --border: #334155;
+  --text: #f1f5f9; --text-muted: #94a3b8;
+  --code-bg: #020617; --code-text: #e2e8f0;
+  --shadow: 0 1px 3px rgba(0,0,0,.4);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+       background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; }
+header { background: var(--surface); border-bottom: 1px solid var(--border);
+         padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; }
+header h1 { font-size: 20px; font-weight: 700; letter-spacing: -.3px; }
+header small { color: var(--text-muted); margin-left: 10px; font-weight: 400; font-size: 12px; }
+.theme-btn { background: none; border: 1px solid var(--border); border-radius: 6px;
+             padding: 6px 12px; cursor: pointer; color: var(--text); font-size: 13px; }
+.main { max-width: 1280px; margin: 24px auto; padding: 0 24px; }
+
+/* ── Summary card ───────────────────────────────────────────────────── */
+.summary-grid { display: grid; grid-template-columns: auto 1fr; gap: 24px;
+                align-items: center; background: var(--surface); border-radius: 12px;
+                padding: 24px; box-shadow: var(--shadow); margin-bottom: 24px; }
+.donut-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; }
+.stat-card { background: var(--bg); border-radius: 8px; padding: 14px 16px;
+             border: 1px solid var(--border); text-align: center; }
+.stat-card .stat-value { font-size: 28px; font-weight: 700; line-height: 1; }
+.stat-card .stat-label { font-size: 11px; text-transform: uppercase;
+                         letter-spacing: .8px; color: var(--text-muted); margin-top: 4px; }
+.stat-card.pass .stat-value { color: var(--pass); }
+.stat-card.fail .stat-value { color: var(--fail); }
+.stat-card.error .stat-value { color: var(--error); }
+.stat-card.skip .stat-value { color: var(--skip); }
+
+/* ── Controls ───────────────────────────────────────────────────────── */
+.controls { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+.search-box { flex: 1; min-width: 200px; padding: 8px 12px; border: 1px solid var(--border);
+              border-radius: 6px; background: var(--surface); color: var(--text); font-size: 13px; }
+.filter-btn { padding: 7px 16px; border: 1px solid var(--border); border-radius: 6px;
+              background: var(--surface); color: var(--text-muted); cursor: pointer;
+              font-size: 13px; transition: all .15s; }
+.filter-btn.active { background: var(--text); color: var(--bg); border-color: var(--text); }
+
+/* ── Results table ──────────────────────────────────────────────────── */
+table { width: 100%; border-collapse: collapse; background: var(--surface);
+        border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); }
+thead tr { background: var(--bg); border-bottom: 2px solid var(--border); }
+th { padding: 10px 14px; text-align: left; font-size: 11px; text-transform: uppercase;
+     letter-spacing: .7px; color: var(--text-muted); }
+td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.result-row:hover { background: var(--bg); }
+.result-row.failed  { border-left: 3px solid var(--fail); }
+.result-row.error   { border-left: 3px solid var(--error); }
+.result-row.passed  { border-left: 3px solid var(--pass); }
+.result-row.skipped { border-left: 3px solid var(--skip); }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 4px;
+         font-size: 11px; font-weight: 700; letter-spacing: .5px; }
+.badge-pass  { background: #dcfce7; color: #15803d; }
+.badge-fail  { background: #fee2e2; color: #dc2626; }
+.badge-error { background: #ffedd5; color: #c2410c; }
+.badge-skip  { background: #f1f5f9; color: #475569; }
+.test-name { font-family: "SF Mono", "Fira Code", monospace; font-size: 12px;
+             max-width: 600px; overflow-wrap: break-word; }
+.duration { color: var(--text-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.marker { display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 10px;
+          font-size: 10px; background: #ede9fe; color: #6d28d9; }
+.test-chevron { display: inline-block; font-size: 10px; color: #64748b;
+                transition: transform .2s; margin-right: 8px; vertical-align: middle; }
+.test-chevron.open { transform: rotate(90deg); }
+
+/* ── Detail panel ───────────────────────────────────────────────────── */
+.detail-row td { padding: 0; }
+.detail-body { background: var(--code-bg); padding: 16px; display: flex;
+               flex-direction: column; gap: 12px; }
+.detail-section { }
+.detail-label { font-size: 10px; text-transform: uppercase; letter-spacing: .8px;
+                color: #64748b; margin-bottom: 6px; font-weight: 600; }
+.log-label   { color: #f59e0b; }
+.code-block  { font-family: "SF Mono", "Fira Code", monospace; font-size: 12px;
+               color: var(--code-text); white-space: pre-wrap; overflow-wrap: break-word;
+               max-height: 300px; overflow-y: auto; }
+.log-block   { color: #fde68a; }
+
+/* ── HTTP call banner ───────────────────────────────────────────────── */
+.http-banner { border: 1px solid #334155; border-radius: 8px; overflow: hidden; }
+.http-headline { display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+                 background: #1e293b; cursor: pointer; user-select: none; }
+.http-headline:hover { background: #253347; }
+.method-badge { display: inline-block; padding: 2px 8px; border-radius: 4px;
+                font-size: 11px; font-weight: 800; letter-spacing: .6px; color: #fff; }
+.method-GET    { background: var(--method-get); }
+.method-POST   { background: var(--method-post); }
+.method-PUT    { background: var(--method-put); }
+.method-PATCH  { background: var(--method-patch); }
+.method-DELETE { background: var(--method-delete); }
+.method-HEAD, .method-OPTIONS { background: var(--method-other); }
+.http-url { font-family: "SF Mono", "Fira Code", monospace; font-size: 12px;
+            color: #e2e8f0; flex: 1; overflow-wrap: anywhere; }
+.status-chip { padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; }
+.status-2xx { background: #14532d; color: #86efac; }
+.status-3xx { background: #1e3a5f; color: #93c5fd; }
+.status-4xx { background: #7f1d1d; color: #fca5a5; }
+.status-5xx { background: #7c2d12; color: #fdba74; }
+.elapsed-chip { font-size: 11px; color: #94a3b8; white-space: nowrap; }
+.http-chevron { font-size: 10px; color: #64748b; transition: transform .2s; }
+.http-chevron.open { transform: rotate(90deg); }
+
+.http-body { display: none; background: var(--code-bg); }
+.http-body.open { display: block; }
+.http-tabs { display: flex; gap: 0; border-bottom: 1px solid #334155; }
+.http-tab { padding: 6px 14px; font-size: 11px; color: #64748b; cursor: pointer;
+            border-bottom: 2px solid transparent; }
+.http-tab.active { color: #e2e8f0; border-bottom-color: #3b82f6; }
+.http-tab-content { display: none; padding: 12px 14px; }
+.http-tab-content.active { display: block; }
+.http-kv-table { width: 100%; border-collapse: collapse; }
+.http-kv-table th { color: #cbd5e1; font-size: 10px; text-transform: uppercase;
+                    letter-spacing: .6px; padding: 6px 10px; text-align: left; font-weight: 600; }
+.http-kv-table td { font-family: "SF Mono", "Fira Code", monospace; font-size: 12px;
+                    color: #cbd5e1; padding: 6px 10px; vertical-align: top; word-break: break-all; }
+.http-kv-table tr:nth-child(even) td { background: rgba(255,255,255,.05); }
+.http-kv-table td:first-child { color: #94c7ff; font-weight: 500; width: 35%; }
+.http-body-pre { font-family: "SF Mono", "Fira Code", monospace; font-size: 12px;
+                 color: #cbd5e1; white-space: pre-wrap; overflow-wrap: break-word;
+                 max-height: 300px; overflow-y: auto; padding: 8px; }
+
+/* ── Assertion banners ──────────────────────────────────────────────── */
+.assert-list { display: flex; flex-direction: column; gap: 4px; }
+.assert-row { display: flex; align-items: flex-start; gap: 8px; padding: 6px 10px;
+              border-radius: 6px; font-size: 12px; }
+.assert-pass { background: rgba(34,197,94,.1); border: 1px solid rgba(34,197,94,.25); }
+.assert-fail { background: rgba(239,68,68,.12); border: 1px solid rgba(239,68,68,.35); }
+.assert-icon { font-size: 13px; line-height: 1.4; flex-shrink: 0; }
+.assert-name { font-family: "SF Mono", "Fira Code", monospace; color: #e2e8f0;
+               font-weight: 600; flex-shrink: 0; min-width: 140px; }
+.assert-detail { color: #94a3b8; font-family: "SF Mono", "Fira Code", monospace; }
+.assert-detail .exp { color: #86efac; }
+.assert-detail .got { color: #fca5a5; }
+.assert-errors { margin: 4px 0 0 0; padding-left: 18px; color: #fca5a5; }
+.assert-errors li { margin: 2px 0; }
+.assert-schema-detail { margin: 2px 0 8px 30px; }
+.assert-schema-detail .detail-label { margin-top: 6px; }
+.assert-schema-detail summary { cursor: pointer; font-size: 11px; color: #94a3b8;
+                                 user-select: none; }
+.assert-schema-detail summary:hover { color: #e2e8f0; }
+
+footer { text-align: center; padding: 24px; color: var(--text-muted); font-size: 12px; }
+
+/* ── Run info dropdown ──────────────────────────────────────────────── */
+.header-actions { display: flex; align-items: center; gap: 8px; position: relative; }
+.info-panel { display: none; position: absolute; top: calc(100% + 8px); right: 0;
+              background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+              box-shadow: var(--shadow); padding: 10px; z-index: 10; min-width: 280px; }
+.info-panel.open { display: block; }
+.info-table { width: 100%; border-collapse: collapse; }
+.info-table td { padding: 4px 8px; font-size: 12px; border-bottom: none; }
+.info-table td:first-child { color: var(--text-muted); white-space: nowrap; }
+.info-table td:last-child { color: var(--text); font-family: "SF Mono", "Fira Code", monospace;
+                             text-align: right; word-break: break-all; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>GoRest API Test Report
+      <small>Generated 2026-07-05 08:56:10 &nbsp;|&nbsp; Duration: 2.66s</small>
+    </h1>
+  </div>
+  <div class="header-actions">
+    <button class="theme-btn" onclick="toggleInfo()">⚙ Run Info</button>
+    <button class="theme-btn" onclick="toggleTheme()">🌙 Dark</button>
+    <div class="info-panel" id="infoPanel">
+      <table class="info-table">
+        
+        <tr><td>Environment</td><td>dev</td></tr>
+        
+        <tr><td>api_log_level</td><td>DEBUG</td></tr>
+        
+        <tr><td>HTML report log_level</td><td>WARNING</td></tr>
+        
+        <tr><td>log_cli</td><td>enabled</td></tr>
+        
+        <tr><td>log_cli_level</td><td>DEBUG</td></tr>
+        
+        <tr><td>Hostname</td><td>runnervmkkn4f</td></tr>
+        
+        <tr><td>User</td><td>runner</td></tr>
+        
+        <tr><td>OS / Platform</td><td>Linux-6.17.0-1018-azure-x86_64-with-glibc2.39</td></tr>
+        
+        <tr><td>Python</td><td>3.12.13</td></tr>
+        
+        <tr><td>Pytest</td><td>9.1.1</td></tr>
+        
+      </table>
+    </div>
+  </div>
+</header>
+
+<div class="main">
+  <!-- Summary -->
+  <div class="summary-grid">
+    <div class="donut-wrap">
+      <svg width="140" height="140"><circle cx="70" cy="70" r="55" fill="none" stroke="#22c55e" stroke-width="20" stroke-dasharray="345.57 345.57" stroke-dashoffset="-0.00" transform="rotate(-90 70 70)"/><text x="70" y="75" text-anchor="middle" font-size="18" font-weight="bold" fill="currentColor">7</text></svg>
+      <div style="font-size:12px;color:var(--text-muted)">
+        Pass rate: <strong>100.0%</strong>
+      </div>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-value">7</div><div class="stat-label">Total</div>
+      </div>
+      <div class="stat-card pass">
+        <div class="stat-value">7</div><div class="stat-label">Passed</div>
+      </div>
+      <div class="stat-card fail">
+        <div class="stat-value">0</div><div class="stat-label">Failed</div>
+      </div>
+      <div class="stat-card error">
+        <div class="stat-value">0</div><div class="stat-label">Errors</div>
+      </div>
+      <div class="stat-card skip">
+        <div class="stat-value">0</div><div class="stat-label">Skipped</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="controls">
+    <input class="search-box" type="text" placeholder="Search tests…"
+           oninput="filterTable()" id="searchBox"/>
+    <button class="filter-btn active" onclick="setFilter('all', this)">All</button>
+    <button class="filter-btn" onclick="setFilter('passed', this)">Passed</button>
+    <button class="filter-btn" onclick="setFilter('failed', this)">Failed</button>
+    <button class="filter-btn" onclick="setFilter('error', this)">Error</button>
+    <button class="filter-btn" onclick="setFilter('skipped', this)">Skipped</button>
+    <div style="flex: 1"></div>
+    <button class="filter-btn" onclick="expandAll()">▼ Expand All</button>
+    <button class="filter-btn" onclick="collapseAll()">▲ Collapse All</button>
+  </div>
+
+  <!-- Results table -->
+  <table id="resultsTable">
+    <thead>
+      <tr>
+        <th style="width:90px">Status</th>
+        <th>Test ID</th>
+        <th style="width:90px">Duration</th>
+        <th style="width:80px">Calls</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody">
+      
+      
+      
+      <tr class="result-row passed"
+          onclick="toggleDetail('detail-0')"
+          style="cursor:pointer"
+          data-outcome="passed">
+        <td>
+          <span class="badge badge-pass badge-pass">
+            PASSED
+          </span>
+        </td>
+        <td class="test-name">
+          
+          <span class="test-chevron" id="chev-detail-0">▶</span>
+          
+          tests/users/test_users.py::TestUsers::test_create_user_flow
+          
+          <span class="marker">user</span>
+          
+        </td>
+        <td class="duration">0.430s</td>
+        <td style="color:var(--text-muted);font-size:12px">
+          2
+        </td>
+      </tr>
+      
+      <tr id="detail-0" class="detail-row" style="display:none">
+        <td colspan="4">
+          <div class="detail-body">
+
+            
+            
+            
+            
+            
+            
+            <div class="http-banner">
+              <div class="http-headline" onclick="toggleHttp('call-0-0', this)">
+                <span class="method-badge method-POST">POST</span>
+                <span class="http-url">https://gorest.in/public/v2/users</span>
+                <span class="status-chip status-2xx">201</span>
+                <span class="elapsed-chip">296.3 ms</span>
+                <span class="http-chevron" id="chev-call-0-0">▶</span>
+              </div>
+              <div class="http-body" id="call-0-0">
+                <div class="http-tabs">
+                  <div class="http-tab active" onclick="switchTab(this, 'req-h-call-0-0')">Req Headers</div>
+                  <div class="http-tab" onclick="switchTab(this, 'req-b-call-0-0')">Req Body</div>
+                  <div class="http-tab" onclick="switchTab(this, 'res-h-call-0-0')">Res Headers</div>
+                  <div class="http-tab" onclick="switchTab(this, 'res-b-call-0-0')">Res Body</div>
+                </div>
+
+                <div id="req-h-call-0-0" class="http-tab-content active">
+                  <table class="http-kv-table">
+                    <tr><th>Header</th><th>Value</th></tr>
+                    
+                    <tr><td>User-Agent</td><td>python-requests/2.34.2</td></tr>
+                    
+                    <tr><td>Accept-Encoding</td><td>gzip, deflate</td></tr>
+                    
+                    <tr><td>Accept</td><td>application/json</td></tr>
+                    
+                    <tr><td>Connection</td><td>keep-alive</td></tr>
+                    
+                    <tr><td>Content-Type</td><td>application/json</td></tr>
+                    
+                  </table>
+                </div>
+
+                <div id="req-b-call-0-0" class="http-tab-content">
+                  <pre class="http-body-pre">{
+  &#34;name&#34;: &#34;Adam Wood&#34;,
+  &#34;email&#34;: &#34;adam.wood.aece7371@hotmail.com&#34;,
+  &#34;gender&#34;: &#34;male&#34;,
+  &#34;status&#34;: &#34;active&#34;
+}</pre>
+                </div>
+
+                <div id="res-h-call-0-0" class="http-tab-content">
+                  <table class="http-kv-table">
+                    <tr><th>Header</th><th>Value</th></tr>
+                    
+                    <tr><td>Access-Control-Allow-Origin</td><td>*</td></tr>
+                    
+                    <tr><td>Cache-Control</td><td>public, max-age=0, must-revalidate</td></tr>
+                    
+                    <tr><td>Content-Length</td><td>105</td></tr>
+                    
+                    <tr><td>Content-Type</td><td>application/json; charset=utf-8</td></tr>
+                    
+                    <tr><td>Date</td><td>Sun, 05 Jul 2026 08:56:10 GMT</td></tr>
+                    
+                    <tr><td>Etag</td><td>W/&#34;69-4cOQK1uoZrNMJ4PddcWvc2594Ts&#34;</td></tr>
+                    
+                    <tr><td>Server</td><td>Vercel</td></tr>
+                    
+                    <tr><td>Strict-Transport-Security</td><td>max-age=63072000</td></tr>
+                    
+                    <tr><td>X-Powered-By</td><td>Express</td></tr>
+                    
+                    <tr><td>X-Ratelimit-Limit</td><td>60</td></tr>
+                    
+                    <tr><td>X-Ratelimit-Remaining</td><td>59</td></tr>
+                    
+                    <tr><td>X-Ratelimit-Reset</td><td>60</td></tr>
+                    
+                    <tr><td>X-Vercel-Cache</td><td>MISS</td></tr>
+                    
+                    <tr><td>X-Vercel-Id</td><td>sfo1::iad1::7m57k-1783241770311-513683aa2070</td></tr>
+                    
+                  </table>
+                </div>
+
+                <div id="res-b-call-0-0" class="http-tab-content">
+                  <pre class="http-body-pre">{
+  &#34;id&#34;: 1021,
+  &#34;name&#34;: &#34;Adam Wood&#34;,
+  &#34;email&#34;: &#34;adam.wood.aece7371@hotmail.com&#34;,
+  &#34;gender&#34;: &#34;male&#34;,
+  &#34;status&#34;: &#34;active&#34;
+}</pre>
+                </div>
+              </div>
+            </div>
+            
+            
+            
+            
+            
+            <div class="http-banner">
+              <div class="http-headline" onclick="toggleHttp('call-0-1', this)">
+                <span class="method-badge method-DELETE">DELETE</span>
+                <span class="http-url">https://gorest.in/public/v2/users/1021</span>
+                <span class="status-chip status-2xx">204</span>
+                <span class="elapsed-chip">125.1 ms</span>
+                <span class="http-chevron" id="chev-call-0-1">▶</span>
+              </div>
+              <div class="http-body" id="call-0-1">
+                <div class="http-tabs">
+                  <div class="http-tab active" onclick="switchTab(this, 'req-h-call-0-1')">Req Headers</div>
+                  <div class="http-tab" onclick="switchTab(this, 'req-b-call-0-1')">Req Body</div>
+                  <div class="http-tab" onclick="switchTab(this, 'res-h-call-0-1')">Res Headers</div>
+                  <div class="http-tab" onclick="switchTab(this, 'res-b-call-0-1')">Res Body</div>
+                </div>
+
+                <div id="req-h-call-0-1" class="http-tab-content active">
+                  <table class="http-kv-table">
+                    <tr><th>Header</th><th>Value</th></tr>
+                    
+                    <tr><td>User-Agent</td><td>python-requests/2.34.2</td></tr>
+                    
+                    <tr><td>Accept-Encoding</td><td>gzip, deflate</td></tr>
+                    
+                    <tr><td>Accept</td><td>application/json</td></tr>
+                    
+                    <tr><td>Connection</td><td>keep-alive</td></tr>
+                    
+                    <tr><td>Content-Type</td><td>application/json</td></tr>
+                    
+                  </table>
+                </div>
+
+                <div id="req-b-call-0-1" class="http-tab-content">
+                  <pre class="http-body-pre">—</pre>
+                </div>
+
+                <div id="res-h-call-0-1" class="http-tab-content">
+                  <table class="http-kv-table">
+                    <tr><th>Header</th><th>Value</th></tr>
+                    
+                    <tr><td>Access-Control-Allow-Origin</td><td>*</td></tr>
+                    
+                    <tr><td>Cache-Control</td><td>public, max-age=0, must-revalidate</td></tr>
+                    
+                    <tr><td>Date</td><td>Sun, 05 Jul 2026 08:56:10 GMT</td></tr>
+                    
+                    <tr><td>Server</td><td>Vercel</td></tr>
+                    
+                    <tr><td>Strict-Transport-Security</td><td>max-age=63072000</td></tr>
+                    
+                    <tr><td>X-Powered-By</td><td>Express</td></tr>
+                    
+                    <tr><td>X-Ratelimit-Limit</td><td>60</td></tr>
+                    
+                    <tr><td>X-Ratelimit-Remaining</td><td>58</td></tr>
+                    
+                    <tr><td>X-Ratelimit-Reset</td><td>60</td></tr>
+                    
+                    <tr><td>X-Vercel-Cache</td><td>MISS</td></tr>
+                    
+                    <tr><td>X-Vercel-Id</td><td>sfo1::iad1::w5c9g-1783241770467-a0e33b18ca73</td></tr>
+                    
+                  </table>
+                </div>
+
+                <div id="res-b-call-0-1" class="http-tab-content">
+                  <pre class="http-body-pre">—</pre>
+                </div>
+              </div>
+            </div>
+            
+
+            
+            
+            <div class="detail-section">
+              <div class="detail-label">ASSERTIONS</div>
+              <div class="assert-list">
+                
+                <div class="assert-row assert-pass">
+                  <span class="assert-icon">✅</span>
+                  <span class="assert-name">status_is</span>
+                  
+                  <span class="assert-detail">
+                    
+                    
+                    
+                    
+                    
+                      expected=<span class="exp">201</span>
+                      &nbsp; actual=<span class="got ">201</span>
+                    
+                  </span>
+                  
+                </div>
+                
+                
+                <div class="assert-row assert-pass">
+                  <span class="assert-icon">✅</span>
+                  <span class="assert-name">has_key</span>
+                  
+                  <span class="assert-detail">
+                    
+                    
+                    
+                    
+                      key=<span class="exp">id</span> &nbsp;
+                    
+                    
+                  </span>
+                  
+                </div>
+                
+                
+                <div class="assert-row assert-pass">
+                  <span class="assert-icon">✅</span>
+                  <span class="assert-name">key_equals</span>
+                  
+                  <span class="assert-detail">
+                    
+                    
+                    
+                    
+                      key=<span class="exp">name</span> &nbsp;
+                    
+                    
+                      expected=<span class="exp">Adam Wood</span>
+                      &nbsp; actual=<span class="got ">Adam Wood</span>
+                    
+                  </span>
+                  
+                </div>
+                
+                
+                <div class="assert-row assert-pass">
+                  <span class="assert-icon">✅</span>
+                  <span class="assert-name">key_equals</span>
+                  
+                  <span class="assert-detail">
+                    
+                    
+                    
+                    
+                      key=<span class="exp">email</span> &nbsp;
+                    
+                    
+                      expected=<span class="exp">adam.wood.aece7371@hotmail.com</span>
+                      &nbsp; actual=<span class="got ">adam.wood.aece7371@hotmail.com</span>
+                    
+                  </span>
+                  
+                </div>
+                
+                
+                <div class="assert-row assert-pass">
+                  <span class="assert-icon">✅</span>
+                  <span class="assert-name">equals</span>
+                  
+                  <span class="assert-detail">
+                    
+                      path=<span class="exp">$.status</span> &nbsp;
+                    
+                    
+                    
+                    
+                    
+                      expected=<span class="exp">active</span>
+                      &nbsp; actual=<span class="got ">active</span>
+                    
+                  </span>
+                  
+                </div>
+                
+                
+                <div class="assert-row assert-pass">
+                  <span class="assert-icon">✅</span>
+                  <span class="assert-name">key_equals</span>
+                  
+                  <span class="assert-detail">
+                    
+                    
+                    
+                    
+                      key=<span class="exp">gender</span> &nbsp;
+                    
+                    
+                      expected=<span class="exp">male</span>
+                      &nbsp; actual=<span class="got ">male</span>
+                    
+                  </span>
+                  
+                </div>
+                
+                
+              </div>
+            </div>
+            
+
+            
+            
+            <div class="detail-section">
+              <div class="detail-label log-label">LOGS</div>
+              <pre class="code-block log-block">--- Captured log setup ---
+DEBUG    pytest_api_core.config:config_manager.py:103 Loaded config for env=&#39;dev&#39;: {&#39;base_url&#39;: &#39;https://gorest.in&#39;, &#39;timeout&#39;: 30, &#39;verify_ssl&#39;: True, &#39;headers&#39;: {&#39;Accept&#39;: &#39;application/json&#39;, &#39;Content-Type&#39;: &#39;application/json&#39;}, &#39;api_retry_total&#39;: 3, &#39;api_retry_backoff_factor&#39;: 0.3, &#39;api_retry_methods&#39;: [&#39;GET&#39;, &#39;HEAD&#39;, &#39;OPTIONS&#39;]}
+DEBUG    pytest_api_core.client:api_client.py:147 → POST https://gorest.in/public/v2/users  headers={&#39;User-Agent&#39;: &#39;python-requests/2.34.2&#39;, &#39;Accept-Encoding&#39;: &#39;gzip, deflate&#39;, &#39;Accept&#39;: &#39;application/json&#39;, &#39;Connection&#39;: &#39;keep-alive&#39;, &#39;Content-Type&#39;: &#39;application/json&#39;}  body={&#39;name&#39;: &#39;Adam Wood&#39;, &#39;email&#39;: &#39;adam.wood.aece7371@hotmail.com&#39;, &#39;gender&#39;: &#39;male&#39;, &#39;status&#39;: &#39;active&#39;}
+DEBUG    urllib3.connectionpool:connectionpool.py:1062 Starting new HTTPS connection (1): gorest.in:443
+DEBUG    urllib3.connectionpool:connectionpool.py:544 https://gorest.in:443 &#34;POST /public/v2/users HTTP/1.1&#34; 201 105
+INFO     pytest_api_core.client:api_client.py:162 ← POST https://gorest.in/public/v2/users  201  (296.3 ms)
+DEBUG    pytest_api_core.client:api_client.py:166    response body: {
+  &#34;id&#34;: 1021,
+  &#34;name&#34;: &#34;Adam Wood&#34;,
+  &#34;email&#34;: &#34;adam.wood.aece7371@hotmail.com&#34;,
+  &#34;gender&#34;: &#34;male&#34;,
+  &#34;status&#34;: &#34;active&#34;
+}
+--- Captured log teardown ---
+DEBUG    pytest_api_core.client:api_client.py:147 → DELETE https://gorest.in/public/v2/users/1021  headers={&#39;User-Agent&#39;: &#39;python-requests/2.34.2&#39;, &#39;Accept-Encoding&#39;: &#39;gzip, deflate&#39;, &#39;Accept&#39;: &#39;application/json&#39;, &#39;Connection&#39;: &#39;keep-alive&#39;, &#39;Content-Type&#39;: &#39;application/json&#39;}  body=None
+DEBUG    urllib3.connectionpool:connectionpool.py:544 https://gorest.in:443 &#34;DELETE /public/v2/users/1021 HTTP/1.1&#34; 204 0
+INFO     pytest_api_core.client:api_client.py:162 ← DELETE https://gorest.in/public/v2/users/1021  204  (125.1 ms)
+DEBUG    pytest_api_core.client:api_client.py:166    response body:
+</pre>
+            </div>
+            
+
+            
+            
+            
+
+            
+            
+
+          </div>
+        </td>
+      </tr>
+      
+      
+      
+      
+      <tr class="result-row passed"
+          onclick="toggleDetail('detail-1')"
+          style="cursor:pointer"
+          data-outcome="passed">
+        <td>
+          <span class="badge badge-pass badge-pass">
+            PASSED
+          </span>
+        </td>
+        <td class="test-name">
+          
+          <span class="test-chevron" id="chev-detail-1">▶</span>
+          
+          tests/users/test_users.py::TestUsers::test_create_user_blocked_token
+          
+          <span class="marker">user</span>
+          
+        </td>
+        <td class="duration">0.257s</td>
+        <td style="color:var(--text-muted);font-size:12px">
+          1
+        </td>
+      </tr>
+      
+      <tr id="detail-1" class="detail-row" style="display:none">
+        <td colspan="4">
+          <div class="detail-body">
+
+            
+            
+            
+            
+            
+            
+            <div class="http-banner">
+              <div class="http-headline" onclick="toggleHttp('call-1-0', this)">
+                <span class="method-badge method-POST">POST</span>
+                <span class="http-url">https://gorest.in/public/v2/users</span>
+                <span class="status-chip status-4xx">403</span>
+                <span class="elapsed-chip">254.3 ms</span>
+                <span class="http-chevron" id="chev-call-1-0">▶</span>
+              </div>
+              <div class="http-body" id="call-1-0">
+                <div class="http-tabs">
+                  <div class="http-tab active" onclick="switchTab(this, 'req-h-call-1-0')">Req Headers</div>
+                  <div class="http-tab" onclick="switchTab(this, 'req-b-call-1-0')">Req Body</div>
+                  <div class="http-tab" onclick="switchTab(this, 'res-h-call-1-0')">Res Headers</div>
+                  <div class="http-tab" onclick="switchTab(this, 'res-b-call-1-0')">Res Body</div>
+                </div>
+
+                <div id="req-h-call-1-0" class="http-tab-content active">
+                  <table class="http-kv-table">
+                    <tr><th>Header</th><th>Value</th></tr>
+                    
+                    <tr><td>User-Agent</td><td>python-requests/2.34.2</td></tr>
+                    
+                    <tr><td>Accept-Encoding</td><td>gzip, deflate</td></tr>
+                    
+                    <tr><td>Accept</td><td>application/json</td></tr>
+                    
+                    <tr><td>Connection</td><td>keep-alive</td></tr>
+                    
+                    <tr><td>Content-Type</td><td>application/json</td></tr>
+                    
+                  </table>
+                </div>
+
+                <div id="req-b-call-1-0" class="http-tab-content">
+                  <pre class="http-body-pre">{
+  &#34;name&#34;: &#34;Richard Daniel&#34;,
+  &#34;email&#34;: &#34;richard.daniel.edc1137a@yahoo.com&#34;,
+  &#34;gender&#34;: &#34;male&#34;,
+  &#34;status&#34;: &#34;active&#34;
+}</pre>
+                </div>
+
+                <div id="res-h-call-1-0" class="http-tab-content">
+                  <table class="http-kv-table">
+                    <tr><th>Header</th><th>Value</th></tr>
+                    
+                    <tr><td>Access-Control-Allow-Origin</td><td>*</td></tr>
+                    
+                    <tr><td>Cache-Control</td><td>public, max-age=0, must-revalidate</td></tr>
+                    
+                    <tr><td>Content-Length</td><td>85</td></tr>
+                    
+                    <tr><td>Content-Type</td><td>application/json; charset=utf-8</td></tr>
+                    
+                    <tr><td>Date</td><td>Sun, 05 Jul 2026 08:56:10 GMT</td></tr>
+                    
+                    <tr><td>Etag</td><td>W/&#34;55-NlnQXuMCxD8lCpUbK1WU7DvFfcU&#34;</td></tr>
+                    
+                    <tr><td>Server</td><td>Vercel</td></tr>
+                    
+                    <tr><td>Strict-Transport-Security</td><td>max-age=63072000</td></tr>
+                    
+                    <tr><td>X-Powered-By</td><td>Express</td></tr>
+                    
+                    <tr><td>X-Ratelimit-Limit</td><td>60</td></tr>
+                    
+                    <tr><td>X-Ratelimit-Remaining</td><td>57</td></tr>
+                    
+                    <tr><td>X-Ratelimit-Reset</td><td>60</td></tr>
+                    
+                    <tr><td>X-Vercel-Cache</td><td>MISS</td></tr>
+                    
+                    <tr><td>X-Vercel-Id</td><td>sfo1::iad1::d7sw4-1783241770731-3ff456f89839</td></tr>
+                    
+                  </table>
+                </div>
+
+                <div id="res-b-call-1-0" class="http-tab-content">
+                  <pre class="http-body-pre">{
+  &#34;message&#34;: &#34;Forbidden. This token does not have permission to access this endpoint.&#34;
+}</pre>
+                </div>
+              </div>
+            </div>
+            
+
+            
+            
+            <div class="detail-section">
+              <div class="detail-label">ASSERTIONS</div>
+              <div class="assert-list">
+                
+                <div class="assert-row assert-pass">
+                  <span class="assert-icon">✅</span>
+                  <span class="assert-name">status_is</span>
+                  
+                  <span class="assert-detail">
+                    
+                    
+                    
+                    
+                    
+                      expected=<span class="exp">403</span>
+                      &nbsp; actual=<span class="got ">403</span>
+                    
+                  </span>
+                  
+                </div>
+                
+                
+                <div class="assert-row assert-pass">
+                  <span class="assert-icon">✅</span>
+                  <span class="assert-name">has_key</span>
+                  
+                  <span class="assert-detail">
+                    
+                    
+                    
+                    
+                      key=<span class="exp">message</span> &nbsp;
+                    
+                    
+                  </span>
+                  
+                </div>
+                
+                
+                <div class="assert-row assert-pass">
+                  <span class="assert-icon">✅</span>
+                  <span class="assert-name">equals</span>
+                  
+                  <span class="assert-detail">
+                    
+                      path=<span class="exp">$.message</span> &nbsp;
+                    
+                    
+                    
+                    
+                    
+                      expected=<span class="exp">Forbidden. This token does not have permission to access this endpoint.</span>
+                      &nbsp; actual=<span class="got ">Forbidden. This token does not have permission to access this endpoint.</span>
+                    
+                  </span>
+                  
+                </div>
+                
+                
+              </div>
+            </div>
+            
+
+            
+            
+            <div class="detail-section">
+              <div class="detail-label log-label">LOGS</div>
+              <pre class="code-block log-block">--- Captured log call ---
+DEBUG    pytest_api_core.client:api_client.py:147 → POST https://gorest.in/public/v2/users  headers={&#39;User-Agent&#39;: &#39;python-requests/2.34.2&#39;, &#39;Accept-Encoding&#39;: &#39;gzip, deflate&#39;, &#39;Accept&#39;: &#39;application/json&#39;, &#39;Connection&#39;: &#39;keep-alive&#39;, &#39;Content-Type&#39;: &#39;application/json&#39;}  body={&#39;name&#39;: &#39;Richard Daniel&#39;, &#39;email&#39;: &#39;richard.daniel.edc1137a@yahoo.com&#39;, &#39;gender&#39;: &#39;male&#39;, &#39;status&#39;: &#39;active&#39;}
+DEBUG    urllib3.connectionpool:connectionpool.py:1062 Starting new HTTPS connection (1): gorest.in:443
+DEBUG    urllib3.connectionpool:connectionpool.py:544 https://gorest.in:443 &#34;POST /public/v2/users HTTP/1.1&#34; 403 85
+INFO     pytest_api_core.client:api_client.py:162 ← POST https://gorest.in/public/v2/users  403  (254.3 ms)
+DEBUG    pytest_api_core.client:api_client.py:166    response body: {
+  &#34;message&#34;: &#34;Forbidden. This token does not have permission to access this endpoint.&#34;
+}
+</pre>
+            </div>
+            
+
+            
+            
+            
+
+            
+            
+
+          </div>
+        </td>
+      </tr>
+      
+      
+      
+      
+      <tr class="result-row passed"
+          onclick="toggleDetail('detail-2')"
+          style="cursor:pointer"
+          data-outcome="passed">
+        <td>
+          <span class="badge badge-pass badge-pass">
+            PASSED
+          </span>
+        </td>
+        <td class="test-name">
+          
+          <span class="test-chevron" id="chev-detail-2">▶</span>
+          
+          tests/users/test_users.py::TestUsers::test_create_user_duplicate_email
+          
+          <span class="marker">user</span>
+          
+        </td>
+        <td class="duration">0.373s</td>
+        <td style="color:var(--text-muted);font-size:12px">
+          3
+        </td>
+      </tr>
+      
+      <tr id="detail-2" class="detail-row" style="display:none">
+        <td colspan="4">
+          <div class="detail-body">
+
+            
+            
+            
+            
+            
+            
+            <div class="http-banner">
+              <div class="http-headline" onclick="toggleHttp('call-2-0', this)">
+                <span class="method-badge method-POST">POST</span>
+                <span class="http-url">https://gorest.in/public/v2/users</span>
+                <span class="status-chip status-2xx">201</span>
+                <span class="elapsed-chip">124.3 ms</span>
+                <span class="http-chevron" id="chev-call-2-0">▶</span>
+              </div>
+              <div class="http-body" id="call-2-0">
+                <div class="http-tabs">
+                  <div class="http-tab active" onclick="switchTab(this, 'req-h-call-2-0')">Req Headers</div>
+                  <div class="http-tab" onclick="switchTab(this, 'req-b-call-2-0')">Req Body</div>
+                  <div class="http-tab" onclick="switchTab(this, 'res-h-call-2-0')">Res Headers</div>
+                  <div class="http-tab" onclick="switchTab(this, 'res-b-call-2-0')">Res Body</div>
+                </div>
+
+                <div id="req-h-call-2-0" class="http-tab-content active">
+                  <table class="http-kv-table">
+                    <tr><th>Header</th><th>Value</th></tr>
+                    
+                    <tr><td>User-Agent</td><td>python-requests/2.34.2</td></tr>
+                    
+                    <tr><td>Accept-Encoding</td><td>gzip, deflate</td></tr>
+                    
+                    <tr><td>Accept</td><td>application/json</td></tr>
+                    
+                    <tr><td>Connection</td><td>keep-alive</td></tr>
+                    
+                    <tr><td>Content-Type</td><td>application/json</td></tr>
+                    
+                  </table>
+                </div>
+
+                <div id="req-b-call-2-0" class="http-tab-content">
+                  <pre class="http-body-pre">{
+  &#34;name&#34;: &#34;Jason Hernandez&#34;,
+  &#34;email&#34;: &#34;jason.hernandez.396ce3ef@gmail.com&#34;,
+  &#34;gender&#34;: &#34;male&#34;,
+  &#34;status&#34;: &#34;active&#34;
+}</pre>
+                </div>
+
+                <div id="res-h-call-2-0" class="http-tab-content">
+                  <table class="http-kv-table">
+                    <tr><th>Header</th><th>Value</th></tr>
+                    
+                    <tr><td>Access-Control-Allow-Origin</td><td>*</td></tr>
+                    
+                    <tr><td>Cache-Control</td><td>public, max-age=0, must-revalidate</td></tr>
+                    
+                    <tr><td>Content-Length</td><td>115</td></tr>
+                    
+                    <tr><td>Content-Type</td><td>application/json; charset=utf-8</td></tr>
+                    
+                    <tr><td>Date</td><td>Sun, 05 Jul 2026 08:56:10 GMT</td></tr>
+                    
+                    <tr><td>Etag</td><td>W/&#34;73-1/XlYtt/W6CN98g0bPXjkU4DKRQ&#34;</td></tr>
+                    
+                    <tr><td>Server</td><td>Vercel</td></tr>
+                    
+                    <tr><td>Strict-Transport-Security</td><td>max-age=63072000</td></tr>
+                    
+                    <tr><td>X-Powered-By</td><td>Express</td></tr>
+                    
+                    <tr><td>X-Ratelimit-Limit</td><td>60</td></tr>
+                    
+                    <tr><td>X-Ratelimit-Remaining</td><td>56</td></tr>
+                    
+                    <tr><td>X-Ratelimit-Reset</td><td>60</td></tr>
+                    
+                    <tr><td>X-Vercel-Cache</td><td>MISS</td></tr>
+                    
+                    <tr><td>X-Vercel-Id</td><td>sfo1::iad1::w5zfv-1783241770858-2cfa61a79810</td></tr>
+                    
+                  </table>
+                </div>
+
+                <div id="res-b-call-2-0" class="http-tab-content">
+                  <pre class="http-body-pre">{
+  &#34;id&#34;: 1022,
+  &#34;name&#34;: &#34;Jason Hernandez&#34;,
+  &#34;email&#34;: &#34;jason.hernandez.396ce3ef@gmail.com&#34;,
+  &#34;gender&#34;: &#34;male&#34;,
+  &#34;status&#34;: &#34;active&#34;
+}</pre>
+                </div>
+              </div>
+            </div>
+            
+            
+            
+            
+            
+            <div class="http-banner">
+              <div class="http-headline" onclick="toggleHttp('call-2-1', this)">
+                <span class="method-badge method-POST">POST</span>
+                <span class="http-url">https://gorest.in/public/v2/users</span>
+                <span class="status-chip status-4xx">422</span>
+                <span class="elapsed-chip">126.6 ms</span>
+                <span class="http-chevron" id="chev-call-2-1">▶</span>
+              </div>
+              <div class="http-body" id="call-2-1">
+                <div class="http-tabs">
+                  <div class="http-tab active" onclick="switchTab(this, 'req-h-call-2-1')">Req Headers</div>
+                  <div class="http-tab" onclick="switchTab(this, 'req-b-call-2-1')">Req Body</div>
+                  <div class="http-tab" onclick="switchTab(this, 'res-h-call-2-1')">Res Headers</div>
+                  <div class="http-tab" onclick="switchTab(this, 'res-b-call-2-1')">Res Body</div>
+                </div>
+
+                <div id="req-h-call-2-1" class="http-tab-content active">
+                  <table class="http-kv-table">
+                    <tr><th>Header</th><th>Value</th></tr>
+                    
+                    <tr><td>User-Agent</td><td>python-requests/2.34.2</td></tr>
+                    
+                    <tr><td>Accept-Encoding</td><td>gzip, deflate</td></tr>
+                    
+                    <tr><td>Accept</td><td>application/json</td></tr>
+                    
+                    <tr><td>Connection</td><td>keep-alive</td></tr>
+                    
+                    <tr><td>Content-Type</td><td>application/json</td></tr>
+                    
+                  </table>
+                </div>
+
+                <div id="req-b-call-2-1" class="http-tab-content">
+                  <pre class="http-body-pre">{
+  &#34;name&#34;: &#34;Jason Hernandez&#34;,
+  &#34;email&#34;: &#34;jason.hernandez.396ce3ef@gmail.com&#34;,
+  &#34;gender&#34;: &#34;male&#34;,
+  &#34;status&#34;: &#34;active&#34;
+}</pre>
+                </div>
+
+                <div id="res-h-call-2-1" class="http-tab-content">
+                  <table class="http-kv-table">
+                    <tr><th>Header</th><th>Value</th></tr>
+                    
+                    <tr><td>Access-Control-Allow-Origin</td><td>*</td></tr>
+                    
+                    <tr><td>Cache-Control</td><td>public, max-age=0, must-revalidate</td></tr>
+                    
+                    <tr><td>Content-Length</td><td>54</td></tr>
+                    
+                    <tr><td>Content-Type</td><td>application/json; charset=utf-8</td></tr>
+                    
+                    <tr><td>Date</td><td>Sun, 05 Jul 2026 08:56:11 GMT</td></tr>
+                    
+                    <tr><td>Etag</td><td>W/&#34;36-3UM6ddZm6tZw2FQfv24mz+Ste1g&#34;</td></tr>
+                    
+                    <tr><td>Server</td><td>Vercel</td></tr>
+                    
+                    <tr><td>Strict-Transport-Security</td><td>max-age=63072000</td></tr>
+                    
+                    <tr><td>X-Powered-By</td><td>Express</td></tr>
+                    
+                    <tr><td>X-Ratelimit-Limit</td><td>60</td></tr>
+                    
+                    <tr><td>X-Ratelimit-Remaining</td><td>55</td></tr>
+                    
+                    <tr><td>X-Ratelimit-Reset</td><td>60</td></tr>
+                    
+                    <tr><td>X-Vercel-Cache</td><td>MISS</td></tr>
+                    
+                    <tr><td>X-Vercel-Id</td><td>sfo1::iad1::w5c9g-1783241770977-ecc3ec8721f7</td></tr>
+                    
+                  </table>
+                </div>
+
+                <div id="res-b-call-2-1" class="http-tab-content">
+                  <pre class="http-body-pre">[
+  {
+    &#34;field&#34;: &#34;email&#34;,
+    &#34;message&#34;: &#34;has already been taken&#34;
+  }
+]</pre>
+                </div>
+              </div>
+            </div>
+            
+            
+            
+            
+            
+            <div class="http-banner">
+              <div class="http-headline" onclick="toggleHttp('call-2-2', this)">
+                <span class="method-badge method-DELETE">DELETE</span>
+                <span class="http-url">https://gorest.in/public/v2/users/1022</span>
+                <span class="status-chip status-2xx">204</span>
+                <span class="elapsed-chip">118.7 ms</span>
+                <span class="http-chevron" id="chev-call-2-2">▶</span>
+              </div>
+              <div class="http-body" id="call-2-2">
+                <div class="http-tabs">
+                  <div class="http-tab active" onclick="switchTab(this, 'req-h-call-2-2')">Req Headers</div>
+                  <div class="http-tab" onclick="switchTab(this, 'req-b-call-2-2')">Req Body</div>
+                  <div class="http-tab" onclick="switchTab(this, 'res-h-call-2-2')">Res Headers</div>
+                  <div class="http-tab" onclick="switchTab(this, 'res-b-call-2-2')">Res Body</div>
+                </div>
+
+                <div id="req-h-call-2-2" class="http-tab-content active">
+                  <table class="http-kv-table">
+                    <tr><th>Header</th><th>Value</th></tr>
+                    
+                    <tr><td>User-Agent</td><td>python-requests/2.34.2</td></tr>
+                    
+                    <tr><td>Accept-Encoding</td><td>gzip, deflate</td></tr>
+                    
+                    <tr><td>Accept</td><td>application/json</td></tr>
+                    
+                    <tr><td>Connection</td><td>keep-alive</td></tr>
+                    
+                    <tr><td>Content-Type</td><td>application/json</td></tr>
+                    
+                  </table>
+                </div>
+
+                <div id="req-b-call-2-2" class="http-tab-content">
+                  <pre class="http-body-pre">—</pre>
+                </div>
+
+                <div id="res-h-call-2-2" class="http-tab-content">
+                  <table class="http-kv-table">
+                    <tr><th>Header</th><th>Value</th></tr>
+                    
+                    <tr><td>Access-Control-Allow-Origin</td><td>*</td></tr>
+                    
+                    <tr><td>Cache-Control</td><td>public, max-age=0, must-revalidate</td></tr>
+                    
+                    <tr><td>Date</td><td>Sun, 05 Jul 2026 08:56:11 GMT</td></tr>
+                    
+                    <tr><td>Server</td><td>Vercel</td></tr>
+                    
+                    <tr><td>Strict-Transport-Security</td><td>max-age=63072000</td></tr>
+                    
+                    <tr><td>X-Powered-By</td><td>Express</td></tr>
+                    
+                    <tr><td>X-Ratelimit-Limit</td><td>60</td></tr>
+                    
+                    <tr><td>X-Ratelimit-Remaining</td><td>54</td></tr>
+                    
+                    <tr><td>X-Ratelimit-Reset</td><td>60</td></tr>
+                    
+                    <tr><td>X-Vercel-Cache</td><td>MISS</td></tr>
+                    
+                    <tr><td>X-Vercel-Id</td><td>sfo1::iad1::w5c9g-1783241771105-8ae01dc257d1</td></tr>
+                    
+                  </table>
+                </div>
+
+                <div id="res-b-call-2-2" class="http-tab-content">
+                  <pre class="http-body-pre">—</pre>
+                </div>
+              </div>
+            </div>
+            
+
+            
+            
+            <div class="detail-section">
+              <div class="detail-label">ASSERTIONS</div>
+              <div class="assert-list">
+                
+                <div class="assert-row assert-pass">
+                  <span class="assert-icon">✅</span>
+                  <span class="assert-name">status_is</span>
+                  
+                  <span class="assert-detail">
+                    
+                    
+                    
+                    
+                    
+                      expected=<span class="exp">422</span>
+                      &nbsp; actual=<span class="got ">422</span>
+                    
+                  </span>
+                  
+                </div>
+                
+                
+                <div class="assert-row assert-pass">
+                  <span class="assert-icon">✅</span>
+                  <span class="assert-name">equals</span>
+                  
+                  <span class="assert-detail">
+                    
+                      path=<span class="exp">$[0].field</span> &nbsp;
+                    
+                    
+                    
+                    
+                    
+                      expected=<span class="exp">email</span>
+                      &nbsp; actual=<span class="got ">email</span>
+                    
+                  </span>
+                  
+                </div>
+                
+                
+                <div class="assert-row assert-pass">
+                  <span class="assert-icon">✅</span>
+                  <span class="assert-name">equals</span>
+                  
+                  <span class="assert-detail">
+                    
+                      path=<span class="exp">$[0].message</span> &nbsp;
+                    
+                    
+                    
+                    
+                    
+                      expected=<span class="exp">has already been taken</span>
+                      &nbsp; actual=<span class="got ">has already been taken</span>
+                    
+                  </span>
+                  
+                </div>
+                
+                
+              </div>
+            </div>
+            
+
+            
+            
+            <div class="detail-section">
+              <div class="detail-label log-label">LOGS</div>
+              <pre class="code-block log-block">--- Captured log setup ---
+DEBUG    pytest_api_core.client:api_client.py:147 → POST https://gorest.in/public/v2/users  headers={&#39;User-Agent&#39;: &#39;python-requests/2.34.2&#39;, &#39;Accept-Encoding&#39;: &#39;gzip, deflate&#39;, &#39;Accept&#39;: &#39;application/json&#39;, &#39;Connection&#39;: &#39;keep-alive&#39;, &#39;Content-Type&#39;: &#39;application/json&#39;}  body={&#39;name&#39;: &#39;Jason Hernandez&#39;, &#39;email&#39;: &#39;jason.hernandez.396ce3ef@gmail.com&#39;, &#39;gender&#39;: &#39;male&#39;, &#39;status&#39;: &#39;active&#39;}
+DEBUG    urllib3.connectionpool:connectionpool.py:544 https://gorest.in:443 &#34;POST /public/v2/users HTTP/1.1&#34; 201 115
+INFO     pytest_api_core.client:api_client.py:162 ← POST https://gorest.in/public/v2/users  201  (124.3 ms)
+DEBUG    pytest_api_core.client:api_client.py:166    response body: {
+  &#34;id&#34;: 1022,
+  &#34;name&#34;: &#34;Jason Hernandez&#34;,
+  &#34;email&#34;: &#34;jason.hernandez.396ce3ef@gmail.com&#34;,
+  &#34;gender&#34;: &#34;male&#34;,
+  &#34;status&#34;: &#34;active&#34;
+}
+--- Captured log call ---
+DEBUG    pytest_api_core.client:api_client.py:147 → POST https://gorest.in/public/v2/users  headers={&#39;User-Agent&#39;: &#39;python-requests/2.34.2&#39;, &#39;Accept-Encoding&#39;: &#39;gzip, deflate&#39;, &#39;Accept&#39;: &#39;application/json&#39;, &#39;Connection&#39;: &#39;keep-alive&#39;, &#39;Content-Type&#39;: &#39;application/json&#39;}  body={&#39;name&#39;: &#39;Jason Hernandez&#39;, &#39;email&#39;: &#39;jason.hernandez.396ce3ef@gmail.com&#39;, &#39;gender&#39;: &#39;male&#39;, &#39;status&#39;: &#39;active&#39;}
+DEBUG    urllib3.connectionpool:connectionpool.py:544 https://gorest.in:443 &#34;POST /public/v2/users HTTP/1.1&#34; 422 54
+INFO     pytest_api_core.client:api_client.py:162 ← POST https://gorest.in/public/v2/users  422  (126.6 ms)
+DEBUG    pytest_api_core.client:api_client.py:166    response body: [
+  {
+    &#34;field&#34;: &#34;email&#34;,
+    &#34;message&#34;: &#34;has already been taken&#34;
+  }
+]
+--- Captured log teardown ---
+DEBUG    pytest_api_core.client:api_client.py:147 → DELETE https://gorest.in/public/v2/users/1022  headers={&#39;User-Agent&#39;: &#39;python-requests/2.34.2&#39;, &#39;Accept-Encoding&#39;: &#39;gzip, deflate&#39;, &#39;Accept&#39;: &#39;application/json&#39;, &#39;Connection&#39;: &#39;keep-alive&#39;, &#39;Content-Type&#39;: &#39;application/json&#39;}  body=None
+DEBUG    urllib3.connectionpool:connectionpool.py:544 https://gorest.in:443 &#34;DELETE /public/v2/users/1022 HTTP/1.1&#34; 204 0
+INFO     pytest_api_core.client:api_client.py:162 ← DELETE https://gorest.in/public/v2/users/1022  204  (118.7 ms)
+DEBUG    pytest_api_core.client:api_client.py:166    response body:
+</pre>
+            </div>
+            
+
+            
+            
+            
+
+            
+            
+
+          </div>
+        </td>
+      </tr>
+      
+      
+      
+      
+      <tr class="result-row passed"
+          onclick="toggleDetail('detail-3')"
+          style="cursor:pointer"
+          data-outcome="passed">
+        <td>
+          <span class="badge badge-pass badge-pass">
+            PASSED
+          </span>
+        </td>
+        <td class="test-name">
+          
+          <span class="test-chevron" id="chev-detail-3">▶</span>
+          
+          tests/users/test_users.py::TestUsers::test_get_user
+          
+          <span class="marker">user</span>
+          
+        </td>
+        <td class="duration">0.381s</td>
+        <td style="color:var(--text-muted);font-size:12px">
+          3
+        </td>
+      </tr>
+      
+      <tr id="detail-3" class="detail-row" style="display:none">
+        <td colspan="4">
+          <div class="detail-body">
+
+            
+            
+            
+            
+            
+            
+            <div class="http-banner">
+              <div class="http-headline" onclick="toggleHttp('call-3-0', this)">
+                <span class="method-badge method-POST">POST</span>
+                <span class="http-url">https://gorest.in/public/v2/users</span>
+                <span class="status-chip status-2xx">201</span>
+                <span class="elapsed-chip">123.6 ms</span>
+                <span class="http-chevron" id="chev-call-3-0">▶</span>
+              </div>
+              <div class="http-body" id="call-3-0">
+                <div class="http-tabs">
+                  <div class="http-tab active" onclick="switchTab(this, 'req-h-call-3-0')">Req Headers</div>
+                  <div class="http-tab" onclick="switchTab(this, 'req-b-call-3-0')">Req Body</div>
+                  <div class="http-tab" onclick="switchTab(this, 'res-h-call-3-0')">Res Headers</div>
+                  <div class="http-tab" onclick="switchTab(this, 'res-b-call-3-0')">Res Body</div>
+                </div>
+
+                <div id="req-h-call-3-0" class="http-tab-content active">
+                  <table class="http-kv-table">
+                    <tr><th>Header</th><th>Value</th></tr>
+                    
+                    <tr><td>User-Agent</td><td>python-requests/2.34.2</td></tr>
+                    
+                    <tr><td>Accept-Encoding</td><td>gzip, deflate</td></tr>
+                    
+                    <tr><td>Accept</td><td>application/json</td></tr>
+                    
+                    <tr><td>Connection</td><td>keep-alive</td></tr>
+                    
+                    <tr><td>Content-Type</td><td>application/json</td></tr>
+                    
+                  </table>
+                </div>
+
+                <div id="req-b-call-3-0" class="http-tab-content">
+                  <pre class="http-body-pre">{
+  &#34;name&#34;: &#34;Jesse Campos&#34;,
+  &#34;email&#34;: &#34;jesse.campos.fac3fbbc@gmail.com&#34;,
+  &#34;gender&#34;: &#34;male&#34;,
+  &#34;status&#34;: &#34;active&#34;
+}</pre>
+                </div>
+
+                <div id="res-h-call-3-0" class="http-tab-content">
+                  <table class="http-kv-table">
+                    <tr><th>Header</th><th>Value</th></tr>
+                    
+                    <tr><td>Access-Control-Allow-Origin</td><td>*</td></tr>
+                    
+                    <tr><td>Cache-Control</td><td>public, max-age=0, must-revalidate</td></tr>
+                    
+                    <tr><td>Content-Length</td><td>109</td></tr>
+                    
+                    <tr><td>Content-Type</td><td>application/json; charset=utf-8</td></tr>
+                    
+                    <tr><td>Date</td><td>Sun, 05 Jul 2026 08:56:11 GMT</td></tr>
+                    
+                    <tr><td>Etag</td><td>W/&#34;6d-t+rZQwBX7r9Ij2lV7i6h1PYyIts&#34;</td></tr>
+                    
+                    <tr><td>Server</td><td>Vercel</td></tr>
+                    
+                    <tr><td>Strict-Transport-Security</td><td>max-age=63072000</td></tr>
+                    
+                    <tr><td>X-Powered-By</td><td>Express</td></tr>
+                    
+                    <tr><td>X-Ratelimit-Limit</td><td>60</td></tr>
+                    
+                    <tr><td>X-Ratelimit-Remaining</td><td>53</td></tr>
+                    
+                    <tr><td>X-Ratelimit-Reset</td><td>60</td></tr>
+                    
+                    <tr><td>X-Vercel-Cache</td><td>MISS</td></tr>
+                    
+                    <tr><td>X-Vercel-Id</td><td>sfo1::iad1::w5c9g-1783241771226-99e3e9fa2a11</td></tr>
+                    
+                  </table>
+                </div>
+
+                <div id="res-b-call-3-0" class="http-tab-content">
+                  <pre class="http-body-pre">{
+  &#34;id&#34;: 1023,
+  &#34;name&#34;: &#34;Jesse Campos&#34;,
+  &#34;email&#34;: &#34;jesse.campos.fac3fbbc@gmail.com&#34;,
+  &#34;gender&#34;: &#34;male&#34;,
+  &#34;status&#34;: &#34;active&#34;
+}</pre>
+                </div>
+              </div>
+            </div>
+            
+            
+            
+            
+            
+            <div class="http-banner">
+              <div class="http-headline" onclick="toggleHttp('call-3-1', this)">
+                <span class="method-badge method-GET">GET</span>
+                <span class="http-url">https://gorest.in/public/v2/users/1023</span>
+                <span class="status-chip status-2xx">200</span>
+                <span class="elapsed-chip">140.3 ms</span>
+                <span class="http-chevron" id="chev-call-3-1">▶</span>
+              </div>
+              <div class="http-body" id="call-3-1">
+                <div class="http-tabs">
+                  <div class="http-tab active" onclick="switchTab(this, 'req-h-call-3-1')">Req Headers</div>
+                  <div class="http-tab" onclick="switchTab(this, 'req-b-call-3-1')">Req Body</div>
+                  <div class="http-tab" onclick="switchTab(this, 'res-h-call-3-1')">Res Headers</div>
+                  <div class="http-tab" onclick="switchTab(this, 'res-b-call-3-1')">Res Body</div>
+                </div>
+
+                <div id="req-h-call-3-1" class="http-tab-content active">
+                  <table class="http-kv-table">
+                    <tr><th>Header</th><th>Value</th></tr>
+                    
+                    <tr><td>User-Agent</td><td>python-requests/2.34.2</td></tr>
+                    
+                    <tr><td>Accept-Encoding</td><td>gzip, deflate</td></tr>
+                    
+                    <tr><td>Accept</td><td>application/json</td></tr>
+                    
+                    <tr><td>Connection</td><td>keep-alive</td></tr>
+                    
+                    <tr><td>Content-Type</td><td>application/json</td></tr>
+                    
+                  </table>
+                </div>
+
+                <div id="req-b-call-3-1" class="http-tab-content">
+                  <pre class="http-body-pre">—</pre>
+                </div>
+
+                <div id="res-h-call-3-1" class="http-tab-content">
+                  <table class="http-kv-table">
+                    <tr><th>Header</th><th>Value</th></tr>
+                    
+                    <tr><td>Access-Control-Allow-Origin</td><td>*</td></tr>
+                    
+                    <tr><td>Cache-Control</td><td>public, max-age=0, must-revalidate</td></tr>
+                    
+                    <tr><td>Content-Length</td><td>109</td></tr>
+                    
+                    <tr><td>Content-Type</td><td>application/json; charset=utf-8</td></tr>
+                    
+                    <tr><td>Date</td><td>Sun, 05 Jul 2026 08:56:11 GMT</td></tr>
+                    
+                    <tr><td>Etag</td><td>W/&#34;6d-t+rZQwBX7r9Ij2lV7i6h1PYyIts&#34;</td></tr>
+                    
+                    <tr><td>Server</td><td>Vercel</td></tr>
+                    
+                    <tr><td>Strict-Transport-Security</td><td>max-age=63072000</td></tr>
+                    
+                    <tr><td>X-Powered-By</td><td>Express</td></tr>
+                    
+                    <tr><td>X-Ratelimit-Limit</td><td>60</td></tr>
+                    
+                    <tr><td>X-Ratelimit-Remaining</td><td>52</td></tr>
+                    
+                    <tr><td>X-Ratelimit-Reset</td><td>59</td></tr>
+                    
+                    <tr><td>X-Vercel-Cache</td><td>BYPASS</td></tr>
+                    
+                    <tr><td>X-Vercel-Id</td><td>sfo1::iad1::fztxf-1783241771351-5cbfbf62bd6b</td></tr>
+                    
+                  </table>
+                </div>
+
+                <div id="res-b-call-3-1" class="http-tab-content">
+                  <pre class="http-body-pre">{
+  &#34;id&#34;: 1023,
+  &#34;name&#34;: &#34;Jesse Campos&#34;,
+  &#34;email&#34;: &#34;jesse.campos.fac3fbbc@gmail.com&#34;,
+  &#34;gender&#34;: &#34;male&#34;,
+  &#34;status&#34;: &#34;active&#34;
+}</pre>
+                </div>
+              </div>
+            </div>
+            
+            
+            
+            
+            
+            <div class="http-banner">
+              <div class="http-headline" onclick="toggleHttp('call-3-2', this)">
+                <span class="method-badge method-DELETE">DELETE</span>
+                <span class="http-url">https://gorest.in/public/v2/users/1023</span>
+                <span class="status-chip status-2xx">204</span>
+                <span class="elapsed-chip">113.3 ms</span>
+                <span class="http-chevron" id="chev-call-3-2">▶</span>
+              </div>
+              <div class="http-body" id="call-3-2">
+                <div class="http-tabs">
+                  <div class="http-tab active" onclick="switchTab(this, 'req-h-call-3-2')">Req Headers</div>
+                  <div class="http-tab" onclick="switchTab(this, 'req-b-call-3-2')">Req Body</div>
+                  <div class="http-tab" onclick="switchTab(this, 'res-h-call-3-2')">Res Headers</div>
+                  <div class="http-tab" onclick="switchTab(this, 'res-b-call-3-2')">Res Body</div>
+                </div>
+
+                <div id="req-h-call-3-2" class="http-tab-content active">
+                  <table class="http-kv-table">
+                    <tr><th>Header</th><th>Value</th></tr>
+                    
+                    <tr><td>User-Agent</td><td>python-requests/2.34.2</td></tr>
+                    
+                    <tr><td>Accept-Encoding</td><td>gzip, deflate</td></tr>
+                    
+                    <tr><td>Accept</td><td>application/json</td></tr>
+                    
+                    <tr><td>Connection</td><td>keep-alive</td></tr>
+                    
+                    <tr><td>Content-Type</td><td>application/json</td></tr>
+                    
+                  </table>
+                </div>
+
+                <div id="req-b-call-3-2" class="http-tab-content">
+                  <pre class="http-body-pre">—</pre>
+                </div>
+
+                <div id="res-h-call-3-2" class="http-tab-content">
+                  <table class="http-kv-table">
+                    <tr><th>Header</th><th>Value</th></tr>
+                    
+                    <tr><td>Access-Control-Allow-Origin</td><td>*</td></tr>
+                    
+                    <tr><td>Cache-Control</td><td>public, max-age=0, must-revalidate</td></tr>
+                    
+                    <tr><td>Date</td><td>Sun, 05 Jul 2026 08:56:11 GMT</td></tr>
+                    
+                    <tr><td>Server</td><td>Vercel</td></tr>
+                    
+                    <tr><td>Strict-Transport-Security</td><td>max-age=63072000</td></tr>
+                    
+                    <tr><td>X-Powered-By</td><td>Express</td></tr>
+                    
+                    <tr><td>X-Ratelimit-Limit</td><td>60</td></tr>
+                    
+                    <tr><td>X-Ratelimit-Remaining</td><td>51</td></tr>
+                    
+                    <tr><td>X-Ratelimit-Reset</td><td>59</td></tr>
+                    
+                    <tr><td>X-Vercel-Cache</td><td>MISS</td></tr>
+                    
+                    <tr><td>X-Vercel-Id</td><td>sfo1::iad1::fztxf-1783241771493-7294b0ce9069</td></tr>
+                    
+                  </table>
+                </div>
+
+                <div id="res-b-call-3-2" class="http-tab-content">
+                  <pre class="http-body-pre">—</pre>
+                </div>
+              </div>
+            </div>
+            
+
+            
+            
+            <div class="detail-section">
+              <div class="detail-label">ASSERTIONS</div>
+              <div class="assert-list">
+                
+                <div class="assert-row assert-pass">
+                  <span class="assert-icon">✅</span>
+                  <span class="assert-name">status_is</span>
+                  
+                  <span class="assert-detail">
+                    
+                    
+                    
+                    
+                    
+                      expected=<span class="exp">200</span>
+                      &nbsp; actual=<span class="got ">200</span>
+                    
+                  </span>
+                  
+                </div>
+                
+                
+                <div class="assert-row assert-pass">
+                  <span class="assert-icon">✅</span>
+                  <span class="assert-name">key_equals</span>
+                  
+                  <span class="assert-detail">
+                    
+                    
+                    
+                    
+                      key=<span class="exp">id</span> &nbsp;
+                    
+                    
+                      expected=<span class="exp">1023</span>
+                      &nbsp; actual=<span class="got ">1023</span>
+                    
+                  </span>
+                  
+                </div>
+                
+                
+                <div class="assert-row assert-pass">
+                  <span class="assert-icon">✅</span>
+                  <span class="assert-name">key_equals</span>
+                  
+                  <span class="assert-detail">
+                    
+                    
+                    
+                    
+                      key=<span class="exp">name</span> &nbsp;
+                    
+                    
+                      expected=<span class="exp">Jesse Campos</span>
+                      &nbsp; actual=<span class="got ">Jesse Campos</span>
+                    
+                  </span>
+                  
+                </div>
+                
+                
+                <div class="assert-row assert-pass">
+                  <span class="assert-icon">✅</span>
+                  <span class="assert-name">key_equals</span>
+                  
+                  <span class="assert-detail">
+                    
+                    
+                    
+                    
+                      key=<span class="exp">email</span> &nbsp;
+                    
+                    
+                      expected=<span class="exp">jesse.campos.fac3fbbc@gmail.com</span>
+                      &nbsp; actual=<span class="got ">jesse.campos.fac3fbbc@gmail.com</span>
+                    
+                  </span>
+                  
+                </div>
+                
+                
+                <div class="assert-row assert-pass">
+                  <span class="assert-icon">✅</span>
+                  <span class="assert-name">key_equals</span>
+                  
+                  <span class="assert-detail">
+                    
+                    
+                    
+                    
+                      key=<span class="exp">gender</span> &nbsp;
+                    
+                    
+                      expected=<span class="exp">male</span>
+                      &nbsp; actual=<span class="got ">male</span>
+                    
+                  </span>
+                  
+                </div>
+                
+                
+                <div class="assert-row assert-pass">
+                  <span class="assert-icon">✅</span>
+                  <span class="assert-name">key_equals</span>
+                  
+                  <span class="assert-detail">
+                    
+                    
+                    
+                    
+                      key=<span class="exp">status</span> &nbsp;
+                    
+                    
+                      expected=<span class="exp">active</span>
+                      &nbsp; actual=<span class="got ">active</span>
+                    
+                  </span>
+                  
+                </div>
+                
+                
+              </div>
+            </div>
+            
+
+            
+            
+            <div class="detail-section">
+              <div class="detail-label log-label">LOGS</div>
+              <pre class="code-block log-block">--- Captured log setup ---
+DEBUG    pytest_api_core.client:api_client.py:147 → POST https://gorest.in/public/v2/users  headers={&#39;User-Agent&#39;: &#39;python-requests/2.34.2&#39;, &#39;Accept-Encoding&#39;: &#39;gzip, deflate&#39;, &#39;Accept&#39;: &#39;application/json&#39;, &#39;Connection&#39;: &#39;keep-alive&#39;, &#39;Content-Type&#39;: &#39;application/json&#39;}  body={&#39;name&#39;: &#39;Jesse Campos&#39;, &#39;email&#39;: &#39;jesse.campos.fac3fbbc@gmail.com&#39;, &#39;gender&#39;: &#39;male&#39;, &#39;status&#39;: &#39;active&#39;}
+DEBUG    urllib3.connectionpool:connectionpool.py:544 https://gorest.in:443 &#34;POST /public/v2/users HTTP/1.1&#34; 201 109
+INFO     pytest_api_core.client:api_client.py:162 ← POST https://gorest.in/public/v2/users  201  (123.6 ms)
+DEBUG    pytest_api_core.client:api_client.py:166    response body: {
+  &#34;id&#34;: 1023,
+  &#34;name&#34;: &#34;Jesse Campos&#34;,
+  &#34;email&#34;: &#34;jesse.campos.fac3fbbc@gmail.com&#34;,
+  &#34;gender&#34;: &#34;male&#34;,
+  &#34;status&#34;: &#34;active&#34;
+}
+--- Captured log call ---
+DEBUG    pytest_api_core.client:api_client.py:147 → GET https://gorest.in/public/v2/users/1023  headers={&#39;User-Agent&#39;: &#39;python-requests/2.34.2&#39;, &#39;Accept-Encoding&#39;: &#39;gzip, deflate&#39;, &#39;Accept&#39;: &#39;application/json&#39;, &#39;Connection&#39;: &#39;keep-alive&#39;, &#39;Content-Type&#39;: &#39;application/json&#39;}  body=None
+DEBUG    urllib3.connectionpool:connectionpool.py:544 https://gorest.in:443 &#34;GET /public/v2/users/1023 HTTP/1.1&#34; 200 109
+INFO     pytest_api_core.client:api_client.py:162 ← GET https://gorest.in/public/v2/users/1023  200  (140.3 ms)
+DEBUG    pytest_api_core.client:api_client.py:166    response body: {
+  &#34;id&#34;: 1023,
+  &#34;name&#34;: &#34;Jesse Campos&#34;,
+  &#34;email&#34;: &#34;jesse.campos.fac3fbbc@gmail.com&#34;,
+  &#34;gender&#34;: &#34;male&#34;,
+  &#34;status&#34;: &#34;active&#34;
+}
+--- Captured log teardown ---
+DEBUG    pytest_api_core.client:api_client.py:147 → DELETE https://gorest.in/public/v2/users/1023  headers={&#39;User-Agent&#39;: &#39;python-requests/2.34.2&#39;, &#39;Accept-Encoding&#39;: &#39;gzip, deflate&#39;, &#39;Accept&#39;: &#39;application/json&#39;, &#39;Connection&#39;: &#39;keep-alive&#39;, &#39;Content-Type&#39;: &#39;application/json&#39;}  body=None
+DEBUG    urllib3.connectionpool:connectionpool.py:544 https://gorest.in:443 &#34;DELETE /public/v2/users/1023 HTTP/1.1&#34; 204 0
+INFO     pytest_api_core.client:api_client.py:162 ← DELETE https://gorest.in/public/v2/users/1023  204  (113.3 ms)
+DEBUG    pytest_api_core.client:api_client.py:166    response body:
+</pre>
+            </div>
+            
+
+            
+            
+            
+
+            
+            
+
+          </div>
+        </td>
+      </tr>
+      
+      
+      
+      
+      <tr class="result-row passed"
+          onclick="toggleDetail('detail-4')"
+          style="cursor:pointer"
+          data-outcome="passed">
+        <td>
+          <span class="badge badge-pass badge-pass">
+            PASSED
+          </span>
+        </td>
+        <td class="test-name">
+          
+          <span class="test-chevron" id="chev-detail-4">▶</span>
+          
+          tests/users/test_users.py::TestUsers::test_update_user
+          
+          <span class="marker">user</span>
+          
+        </td>
+        <td class="duration">0.378s</td>
+        <td style="color:var(--text-muted);font-size:12px">
+          3
+        </td>
+      </tr>
+      
+      <tr id="detail-4" class="detail-row" style="display:none">
+        <td colspan="4">
+          <div class="detail-body">
+
+            
+            
+            
+            
+            
+            
+            <div class="http-banner">
+              <div class="http-headline" onclick="toggleHttp('call-4-0', this)">
+                <span class="method-badge method-POST">POST</span>
+                <span class="http-url">https://gorest.in/public/v2/users</span>
+                <span class="status-chip status-2xx">201</span>
+                <span class="elapsed-chip">138.8 ms</span>
+                <span class="http-chevron" id="chev-call-4-0">▶</span>
+              </div>
+              <div class="http-body" id="call-4-0">
+                <div class="http-tabs">
+                  <div class="http-tab active" onclick="switchTab(this, 'req-h-call-4-0')">Req Headers</div>
+                  <div class="http-tab" onclick="switchTab(this, 'req-b-call-4-0')">Req Body</div>
+                  <div class="http-tab" onclick="switchTab(this, 'res-h-call-4-0')">Res Headers</div>
+                  <div class="http-tab" onclick="switchTab(this, 'res-b-call-4-0')">Res Body</div>
+                </div>
+
+                <div id="req-h-call-4-0" class="http-tab-content active">
+                  <table class="http-kv-table">
+                    <tr><th>Header</th><th>Value</th></tr>
+                    
+                    <tr><td>User-Agent</td><td>python-requests/2.34.2</td></tr>
+                    
+                    <tr><td>Accept-Encoding</td><td>gzip, deflate</td></tr>
+                    
+                    <tr><td>Accept</td><td>application/json</td></tr>
+                    
+                    <tr><td>Connection</td><td>keep-alive</td></tr>
+                    
+                    <tr><td>Content-Type</td><td>application/json</td></tr>
+                    
+                  </table>
+                </div>
+
+                <div id="req-b-call-4-0" class="http-tab-content">
+                  <pre class="http-body-pre">{
+  &#34;name&#34;: &#34;Marc Davis&#34;,
+  &#34;email&#34;: &#34;marc.davis.96dec8ce@gmail.com&#34;,
+  &#34;gender&#34;: &#34;male&#34;,
+  &#34;status&#34;: &#34;active&#34;
+}</pre>
+                </div>
+
+                <div id="res-h-call-4-0" class="http-tab-content">
+                  <table class="http-kv-table">
+                    <tr><th>Header</th><th>Value</th></tr>
+                    
+                    <tr><td>Access-Control-Allow-Origin</td><td>*</td></tr>
+                    
+                    <tr><td>Cache-Control</td><td>public, max-age=0, must-revalidate</td></tr>
+                    
+                    <tr><td>Content-Length</td><td>105</td></tr>
+                    
+                    <tr><td>Content-Type</td><td>application/json; charset=utf-8</td></tr>
+                    
+                    <tr><td>Date</td><td>Sun, 05 Jul 2026 08:56:11 GMT</td></tr>
+                    
+                    <tr><td>Etag</td><td>W/&#34;69-yO3Z6tsoll7zmSK+iLLcnrWGB+Q&#34;</td></tr>
+                    
+                    <tr><td>Server</td><td>Vercel</td></tr>
+                    
+                    <tr><td>Strict-Transport-Security</td><td>max-age=63072000</td></tr>
+                    
+                    <tr><td>X-Powered-By</td><td>Express</td></tr>
+                    
+                    <tr><td>X-Ratelimit-Limit</td><td>60</td></tr>
+                    
+                    <tr><td>X-Ratelimit-Remaining</td><td>50</td></tr>
+                    
+                    <tr><td>X-Ratelimit-Reset</td><td>59</td></tr>
+                    
+                    <tr><td>X-Vercel-Cache</td><td>MISS</td></tr>
+                    
+                    <tr><td>X-Vercel-Id</td><td>sfo1::iad1::7m57k-1783241771608-8fe687c70036</td></tr>
+                    
+                  </table>
+                </div>
+
+                <div id="res-b-call-4-0" class="http-tab-content">
+                  <pre class="http-body-pre">{
+  &#34;id&#34;: 1024,
+  &#34;name&#34;: &#34;Marc Davis&#34;,
+  &#34;email&#34;: &#34;marc.davis.96dec8ce@gmail.com&#34;,
+  &#34;gender&#34;: &#34;male&#34;,
+  &#34;status&#34;: &#34;active&#34;
+}</pre>
+                </div>
+              </div>
+            </div>
+            
+            
+            
+            
+            
+            <div class="http-banner">
+              <div class="http-headline" onclick="toggleHttp('call-4-1', this)">
+                <span class="method-badge method-PUT">PUT</span>
+                <span class="http-url">https://gorest.in/public/v2/users/1024</span>
+                <span class="status-chip status-2xx">200</span>
+                <span class="elapsed-chip">115.9 ms</span>
+                <span class="http-chevron" id="chev-call-4-1">▶</span>
+              </div>
+              <div class="http-body" id="call-4-1">
+                <div class="http-tabs">
+                  <div class="http-tab active" onclick="switchTab(this, 'req-h-call-4-1')">Req Headers</div>
+                  <div class="http-tab" onclick="switchTab(this, 'req-b-call-4-1')">Req Body</div>
+                  <div class="http-tab" onclick="switchTab(this, 'res-h-call-4-1')">Res Headers</div>
+                  <div class="http-tab" onclick="switchTab(this, 'res-b-call-4-1')">Res Body</div>
+                </div>
+
+                <div id="req-h-call-4-1" class="http-tab-content active">
+                  <table class="http-kv-table">
+                    <tr><th>Header</th><th>Value</th></tr>
+                    
+                    <tr><td>User-Agent</td><td>python-requests/2.34.2</td></tr>
+                    
+                    <tr><td>Accept-Encoding</td><td>gzip, deflate</td></tr>
+                    
+                    <tr><td>Accept</td><td>application/json</td></tr>
+                    
+                    <tr><td>Connection</td><td>keep-alive</td></tr>
+                    
+                    <tr><td>Content-Type</td><td>application/json</td></tr>
+                    
+                  </table>
+                </div>
+
+                <div id="req-b-call-4-1" class="http-tab-content">
+                  <pre class="http-body-pre">{
+  &#34;id&#34;: 1024,
+  &#34;name&#34;: &#34;Updated Name&#34;,
+  &#34;email&#34;: &#34;marc.davis.96dec8ce@gmail.com&#34;,
+  &#34;gender&#34;: &#34;male&#34;,
+  &#34;status&#34;: &#34;inactive&#34;
+}</pre>
+                </div>
+
+                <div id="res-h-call-4-1" class="http-tab-content">
+                  <table class="http-kv-table">
+                    <tr><th>Header</th><th>Value</th></tr>
+                    
+                    <tr><td>Access-Control-Allow-Origin</td><td>*</td></tr>
+                    
+                    <tr><td>Cache-Control</td><td>public, max-age=0, must-revalidate</td></tr>
+                    
+                    <tr><td>Content-Length</td><td>109</td></tr>
+                    
+                    <tr><td>Content-Type</td><td>application/json; charset=utf-8</td></tr>
+                    
+                    <tr><td>Date</td><td>Sun, 05 Jul 2026 08:56:11 GMT</td></tr>
+                    
+                    <tr><td>Etag</td><td>W/&#34;6d-uEPLysxnxxQv5jiwiK0XDZd9pvA&#34;</td></tr>
+                    
+                    <tr><td>Server</td><td>Vercel</td></tr>
+                    
+                    <tr><td>Strict-Transport-Security</td><td>max-age=63072000</td></tr>
+                    
+                    <tr><td>X-Powered-By</td><td>Express</td></tr>
+                    
+                    <tr><td>X-Ratelimit-Limit</td><td>60</td></tr>
+                    
+                    <tr><td>X-Ratelimit-Remaining</td><td>49</td></tr>
+                    
+                    <tr><td>X-Ratelimit-Reset</td><td>59</td></tr>
+                    
+                    <tr><td>X-Vercel-Cache</td><td>MISS</td></tr>
+                    
+                    <tr><td>X-Vercel-Id</td><td>sfo1::iad1::fztxf-1783241771748-fd4e013c5ff2</td></tr>
+                    
+                  </table>
+                </div>
+
+                <div id="res-b-call-4-1" class="http-tab-content">
+                  <pre class="http-body-pre">{
+  &#34;id&#34;: 1024,
+  &#34;name&#34;: &#34;Updated Name&#34;,
+  &#34;email&#34;: &#34;marc.davis.96dec8ce@gmail.com&#34;,
+  &#34;gender&#34;: &#34;male&#34;,
+  &#34;status&#34;: &#34;inactive&#34;
+}</pre>
+                </div>
+              </div>
+            </div>
+            
+            
+            
+            
+            
+            <div class="http-banner">
+              <div class="http-headline" onclick="toggleHttp('call-4-2', this)">
+                <span class="method-badge method-DELETE">DELETE</span>
+                <span class="http-url">https://gorest.in/public/v2/users/1024</span>
+                <span class="status-chip status-2xx">204</span>
+                <span class="elapsed-chip">119.1 ms</span>
+                <span class="http-chevron" id="chev-call-4-2">▶</span>
+              </div>
+              <div class="http-body" id="call-4-2">
+                <div class="http-tabs">
+                  <div class="http-tab active" onclick="switchTab(this, 'req-h-call-4-2')">Req Headers</div>
+                  <div class="http-tab" onclick="switchTab(this, 'req-b-call-4-2')">Req Body</div>
+                  <div class="http-tab" onclick="switchTab(this, 'res-h-call-4-2')">Res Headers</div>
+                  <div class="http-tab" onclick="switchTab(this, 'res-b-call-4-2')">Res Body</div>
+                </div>
+
+                <div id="req-h-call-4-2" class="http-tab-content active">
+                  <table class="http-kv-table">
+                    <tr><th>Header</th><th>Value</th></tr>
+                    
+                    <tr><td>User-Agent</td><td>python-requests/2.34.2</td></tr>
+                    
+                    <tr><td>Accept-Encoding</td><td>gzip, deflate</td></tr>
+                    
+                    <tr><td>Accept</td><td>application/json</td></tr>
+                    
+                    <tr><td>Connection</td><td>keep-alive</td></tr>
+                    
+                    <tr><td>Content-Type</td><td>application/json</td></tr>
+                    
+                  </table>
+                </div>
+
+                <div id="req-b-call-4-2" class="http-tab-content">
+                  <pre class="http-body-pre">—</pre>
+                </div>
+
+                <div id="res-h-call-4-2" class="http-tab-content">
+                  <table class="http-kv-table">
+                    <tr><th>Header</th><th>Value</th></tr>
+                    
+                    <tr><td>Access-Control-Allow-Origin</td><td>*</td></tr>
+                    
+                    <tr><td>Cache-Control</td><td>public, max-age=0, must-revalidate</td></tr>
+                    
+                    <tr><td>Date</td><td>Sun, 05 Jul 2026 08:56:11 GMT</td></tr>
+                    
+                    <tr><td>Server</td><td>Vercel</td></tr>
+                    
+                    <tr><td>Strict-Transport-Security</td><td>max-age=63072000</td></tr>
+                    
+                    <tr><td>X-Powered-By</td><td>Express</td></tr>
+                    
+                    <tr><td>X-Ratelimit-Limit</td><td>60</td></tr>
+                    
+                    <tr><td>X-Ratelimit-Remaining</td><td>48</td></tr>
+                    
+                    <tr><td>X-Ratelimit-Reset</td><td>59</td></tr>
+                    
+                    <tr><td>X-Vercel-Cache</td><td>MISS</td></tr>
+                    
+                    <tr><td>X-Vercel-Id</td><td>sfo1::iad1::n4dz5-1783241771865-a6c9057c2a19</td></tr>
+                    
+                  </table>
+                </div>
+
+                <div id="res-b-call-4-2" class="http-tab-content">
+                  <pre class="http-body-pre">—</pre>
+                </div>
+              </div>
+            </div>
+            
+
+            
+            
+            <div class="detail-section">
+              <div class="detail-label">ASSERTIONS</div>
+              <div class="assert-list">
+                
+                <div class="assert-row assert-pass">
+                  <span class="assert-icon">✅</span>
+                  <span class="assert-name">status_is</span>
+                  
+                  <span class="assert-detail">
+                    
+                    
+                    
+                    
+                    
+                      expected=<span class="exp">200</span>
+                      &nbsp; actual=<span class="got ">200</span>
+                    
+                  </span>
+                  
+                </div>
+                
+                
+                <div class="assert-row assert-pass">
+                  <span class="assert-icon">✅</span>
+                  <span class="assert-name">key_equals</span>
+                  
+                  <span class="assert-detail">
+                    
+                    
+                    
+                    
+                      key=<span class="exp">id</span> &nbsp;
+                    
+                    
+                      expected=<span class="exp">1024</span>
+                      &nbsp; actual=<span class="got ">1024</span>
+                    
+                  </span>
+                  
+                </div>
+                
+                
+                <div class="assert-row assert-pass">
+                  <span class="assert-icon">✅</span>
+                  <span class="assert-name">key_equals</span>
+                  
+                  <span class="assert-detail">
+                    
+                    
+                    
+                    
+                      key=<span class="exp">name</span> &nbsp;
+                    
+                    
+                      expected=<span class="exp">Updated Name</span>
+                      &nbsp; actual=<span class="got ">Updated Name</span>
+                    
+                  </span>
+                  
+                </div>
+                
+                
+                <div class="assert-row assert-pass">
+                  <span class="assert-icon">✅</span>
+                  <span class="assert-name">key_equals</span>
+                  
+                  <span class="assert-detail">
+                    
+                    
+                    
+                    
+                      key=<span class="exp">status</span> &nbsp;
+                    
+                    
+                      expected=<span class="exp">inactive</span>
+                      &nbsp; actual=<span class="got ">inactive</span>
+                    
+                  </span>
+                  
+                </div>
+                
+                
+              </div>
+            </div>
+            
+
+            
+            
+            <div class="detail-section">
+              <div class="detail-label log-label">LOGS</div>
+              <pre class="code-block log-block">--- Captured log setup ---
+DEBUG    pytest_api_core.client:api_client.py:147 → POST https://gorest.in/public/v2/users  headers={&#39;User-Agent&#39;: &#39;python-requests/2.34.2&#39;, &#39;Accept-Encoding&#39;: &#39;gzip, deflate&#39;, &#39;Accept&#39;: &#39;application/json&#39;, &#39;Connection&#39;: &#39;keep-alive&#39;, &#39;Content-Type&#39;: &#39;application/json&#39;}  body={&#39;name&#39;: &#39;Marc Davis&#39;, &#39;email&#39;: &#39;marc.davis.96dec8ce@gmail.com&#39;, &#39;gender&#39;: &#39;male&#39;, &#39;status&#39;: &#39;active&#39;}
+DEBUG    urllib3.connectionpool:connectionpool.py:544 https://gorest.in:443 &#34;POST /public/v2/users HTTP/1.1&#34; 201 105
+INFO     pytest_api_core.client:api_client.py:162 ← POST https://gorest.in/public/v2/users  201  (138.8 ms)
+DEBUG    pytest_api_core.client:api_client.py:166    response body: {
+  &#34;id&#34;: 1024,
+  &#34;name&#34;: &#34;Marc Davis&#34;,
+  &#34;email&#34;: &#34;marc.davis.96dec8ce@gmail.com&#34;,
+  &#34;gender&#34;: &#34;male&#34;,
+  &#34;status&#34;: &#34;active&#34;
+}
+--- Captured log call ---
+DEBUG    pytest_api_core.client:api_client.py:147 → PUT https://gorest.in/public/v2/users/1024  headers={&#39;User-Agent&#39;: &#39;python-requests/2.34.2&#39;, &#39;Accept-Encoding&#39;: &#39;gzip, deflate&#39;, &#39;Accept&#39;: &#39;application/json&#39;, &#39;Connection&#39;: &#39;keep-alive&#39;, &#39;Content-Type&#39;: &#39;application/json&#39;}  body={&#39;id&#39;: 1024, &#39;name&#39;: &#39;Updated Name&#39;, &#39;email&#39;: &#39;marc.davis.96dec8ce@gmail.com&#39;, &#39;gender&#39;: &#39;male&#39;, &#39;status&#39;: &#39;inactive&#39;}
+DEBUG    urllib3.connectionpool:connectionpool.py:544 https://gorest.in:443 &#34;PUT /public/v2/users/1024 HTTP/1.1&#34; 200 109
+INFO     pytest_api_core.client:api_client.py:162 ← PUT https://gorest.in/public/v2/users/1024  200  (115.9 ms)
+DEBUG    pytest_api_core.client:api_client.py:166    response body: {
+  &#34;id&#34;: 1024,
+  &#34;name&#34;: &#34;Updated Name&#34;,
+  &#34;email&#34;: &#34;marc.davis.96dec8ce@gmail.com&#34;,
+  &#34;gender&#34;: &#34;male&#34;,
+  &#34;status&#34;: &#34;inactive&#34;
+}
+--- Captured log teardown ---
+DEBUG    pytest_api_core.client:api_client.py:147 → DELETE https://gorest.in/public/v2/users/1024  headers={&#39;User-Agent&#39;: &#39;python-requests/2.34.2&#39;, &#39;Accept-Encoding&#39;: &#39;gzip, deflate&#39;, &#39;Accept&#39;: &#39;application/json&#39;, &#39;Connection&#39;: &#39;keep-alive&#39;, &#39;Content-Type&#39;: &#39;application/json&#39;}  body=None
+DEBUG    urllib3.connectionpool:connectionpool.py:544 https://gorest.in:443 &#34;DELETE /public/v2/users/1024 HTTP/1.1&#34; 204 0
+INFO     pytest_api_core.client:api_client.py:162 ← DELETE https://gorest.in/public/v2/users/1024  204  (119.1 ms)
+DEBUG    pytest_api_core.client:api_client.py:166    response body:
+</pre>
+            </div>
+            
+
+            
+            
+            
+
+            
+            
+
+          </div>
+        </td>
+      </tr>
+      
+      
+      
+      
+      <tr class="result-row passed"
+          onclick="toggleDetail('detail-5')"
+          style="cursor:pointer"
+          data-outcome="passed">
+        <td>
+          <span class="badge badge-pass badge-pass">
+            PASSED
+          </span>
+        </td>
+        <td class="test-name">
+          
+          <span class="test-chevron" id="chev-detail-5">▶</span>
+          
+          tests/users/test_users.py::TestUsers::test_patch_user
+          
+          <span class="marker">user</span>
+          
+        </td>
+        <td class="duration">0.352s</td>
+        <td style="color:var(--text-muted);font-size:12px">
+          3
+        </td>
+      </tr>
+      
+      <tr id="detail-5" class="detail-row" style="display:none">
+        <td colspan="4">
+          <div class="detail-body">
+
+            
+            
+            
+            
+            
+            
+            <div class="http-banner">
+              <div class="http-headline" onclick="toggleHttp('call-5-0', this)">
+                <span class="method-badge method-POST">POST</span>
+                <span class="http-url">https://gorest.in/public/v2/users</span>
+                <span class="status-chip status-2xx">201</span>
+                <span class="elapsed-chip">114.9 ms</span>
+                <span class="http-chevron" id="chev-call-5-0">▶</span>
+              </div>
+              <div class="http-body" id="call-5-0">
+                <div class="http-tabs">
+                  <div class="http-tab active" onclick="switchTab(this, 'req-h-call-5-0')">Req Headers</div>
+                  <div class="http-tab" onclick="switchTab(this, 'req-b-call-5-0')">Req Body</div>
+                  <div class="http-tab" onclick="switchTab(this, 'res-h-call-5-0')">Res Headers</div>
+                  <div class="http-tab" onclick="switchTab(this, 'res-b-call-5-0')">Res Body</div>
+                </div>
+
+                <div id="req-h-call-5-0" class="http-tab-content active">
+                  <table class="http-kv-table">
+                    <tr><th>Header</th><th>Value</th></tr>
+                    
+                    <tr><td>User-Agent</td><td>python-requests/2.34.2</td></tr>
+                    
+                    <tr><td>Accept-Encoding</td><td>gzip, deflate</td></tr>
+                    
+                    <tr><td>Accept</td><td>application/json</td></tr>
+                    
+                    <tr><td>Connection</td><td>keep-alive</td></tr>
+                    
+                    <tr><td>Content-Type</td><td>application/json</td></tr>
+                    
+                  </table>
+                </div>
+
+                <div id="req-b-call-5-0" class="http-tab-content">
+                  <pre class="http-body-pre">{
+  &#34;name&#34;: &#34;James Garcia&#34;,
+  &#34;email&#34;: &#34;james.garcia.1bbde0c7@hotmail.com&#34;,
+  &#34;gender&#34;: &#34;male&#34;,
+  &#34;status&#34;: &#34;active&#34;
+}</pre>
+                </div>
+
+                <div id="res-h-call-5-0" class="http-tab-content">
+                  <table class="http-kv-table">
+                    <tr><th>Header</th><th>Value</th></tr>
+                    
+                    <tr><td>Access-Control-Allow-Origin</td><td>*</td></tr>
+                    
+                    <tr><td>Cache-Control</td><td>public, max-age=0, must-revalidate</td></tr>
+                    
+                    <tr><td>Content-Length</td><td>111</td></tr>
+                    
+                    <tr><td>Content-Type</td><td>application/json; charset=utf-8</td></tr>
+                    
+                    <tr><td>Date</td><td>Sun, 05 Jul 2026 08:56:12 GMT</td></tr>
+                    
+                    <tr><td>Etag</td><td>W/&#34;6f-fgwcf7sxDUniaQgbVCyEBmVOWJI&#34;</td></tr>
+                    
+                    <tr><td>Server</td><td>Vercel</td></tr>
+                    
+                    <tr><td>Strict-Transport-Security</td><td>max-age=63072000</td></tr>
+                    
+                    <tr><td>X-Powered-By</td><td>Express</td></tr>
+                    
+                    <tr><td>X-Ratelimit-Limit</td><td>60</td></tr>
+                    
+                    <tr><td>X-Ratelimit-Remaining</td><td>47</td></tr>
+                    
+                    <tr><td>X-Ratelimit-Reset</td><td>59</td></tr>
+                    
+                    <tr><td>X-Vercel-Cache</td><td>MISS</td></tr>
+                    
+                    <tr><td>X-Vercel-Id</td><td>sfo1::iad1::w5c9g-1783241771986-e7fef11a82d7</td></tr>
+                    
+                  </table>
+                </div>
+
+                <div id="res-b-call-5-0" class="http-tab-content">
+                  <pre class="http-body-pre">{
+  &#34;id&#34;: 1025,
+  &#34;name&#34;: &#34;James Garcia&#34;,
+  &#34;email&#34;: &#34;james.garcia.1bbde0c7@hotmail.com&#34;,
+  &#34;gender&#34;: &#34;male&#34;,
+  &#34;status&#34;: &#34;active&#34;
+}</pre>
+                </div>
+              </div>
+            </div>
+            
+            
+            
+            
+            
+            <div class="http-banner">
+              <div class="http-headline" onclick="toggleHttp('call-5-1', this)">
+                <span class="method-badge method-PATCH">PATCH</span>
+                <span class="http-url">https://gorest.in/public/v2/users/1025</span>
+                <span class="status-chip status-2xx">200</span>
+                <span class="elapsed-chip">118.1 ms</span>
+                <span class="http-chevron" id="chev-call-5-1">▶</span>
+              </div>
+              <div class="http-body" id="call-5-1">
+                <div class="http-tabs">
+                  <div class="http-tab active" onclick="switchTab(this, 'req-h-call-5-1')">Req Headers</div>
+                  <div class="http-tab" onclick="switchTab(this, 'req-b-call-5-1')">Req Body</div>
+                  <div class="http-tab" onclick="switchTab(this, 'res-h-call-5-1')">Res Headers</div>
+                  <div class="http-tab" onclick="switchTab(this, 'res-b-call-5-1')">Res Body</div>
+                </div>
+
+                <div id="req-h-call-5-1" class="http-tab-content active">
+                  <table class="http-kv-table">
+                    <tr><th>Header</th><th>Value</th></tr>
+                    
+                    <tr><td>User-Agent</td><td>python-requests/2.34.2</td></tr>
+                    
+                    <tr><td>Accept-Encoding</td><td>gzip, deflate</td></tr>
+                    
+                    <tr><td>Accept</td><td>application/json</td></tr>
+                    
+                    <tr><td>Connection</td><td>keep-alive</td></tr>
+                    
+                    <tr><td>Content-Type</td><td>application/json</td></tr>
+                    
+                  </table>
+                </div>
+
+                <div id="req-b-call-5-1" class="http-tab-content">
+                  <pre class="http-body-pre">{
+  &#34;status&#34;: &#34;inactive&#34;
+}</pre>
+                </div>
+
+                <div id="res-h-call-5-1" class="http-tab-content">
+                  <table class="http-kv-table">
+                    <tr><th>Header</th><th>Value</th></tr>
+                    
+                    <tr><td>Access-Control-Allow-Origin</td><td>*</td></tr>
+                    
+                    <tr><td>Cache-Control</td><td>public, max-age=0, must-revalidate</td></tr>
+                    
+                    <tr><td>Content-Length</td><td>113</td></tr>
+                    
+                    <tr><td>Content-Type</td><td>application/json; charset=utf-8</td></tr>
+                    
+                    <tr><td>Date</td><td>Sun, 05 Jul 2026 08:56:12 GMT</td></tr>
+                    
+                    <tr><td>Etag</td><td>W/&#34;71-bvoMbpHfTjSR/oX0fb+g1ZPg+WI&#34;</td></tr>
+                    
+                    <tr><td>Server</td><td>Vercel</td></tr>
+                    
+                    <tr><td>Strict-Transport-Security</td><td>max-age=63072000</td></tr>
+                    
+                    <tr><td>X-Powered-By</td><td>Express</td></tr>
+                    
+                    <tr><td>X-Ratelimit-Limit</td><td>60</td></tr>
+                    
+                    <tr><td>X-Ratelimit-Remaining</td><td>46</td></tr>
+                    
+                    <tr><td>X-Ratelimit-Reset</td><td>59</td></tr>
+                    
+                    <tr><td>X-Vercel-Cache</td><td>MISS</td></tr>
+                    
+                    <tr><td>X-Vercel-Id</td><td>sfo1::iad1::w5c9g-1783241772102-26414b89ef54</td></tr>
+                    
+                  </table>
+                </div>
+
+                <div id="res-b-call-5-1" class="http-tab-content">
+                  <pre class="http-body-pre">{
+  &#34;id&#34;: 1025,
+  &#34;name&#34;: &#34;James Garcia&#34;,
+  &#34;email&#34;: &#34;james.garcia.1bbde0c7@hotmail.com&#34;,
+  &#34;gender&#34;: &#34;male&#34;,
+  &#34;status&#34;: &#34;inactive&#34;
+}</pre>
+                </div>
+              </div>
+            </div>
+            
+            
+            
+            
+            
+            <div class="http-banner">
+              <div class="http-headline" onclick="toggleHttp('call-5-2', this)">
+                <span class="method-badge method-DELETE">DELETE</span>
+                <span class="http-url">https://gorest.in/public/v2/users/1025</span>
+                <span class="status-chip status-2xx">204</span>
+                <span class="elapsed-chip">114.8 ms</span>
+                <span class="http-chevron" id="chev-call-5-2">▶</span>
+              </div>
+              <div class="http-body" id="call-5-2">
+                <div class="http-tabs">
+                  <div class="http-tab active" onclick="switchTab(this, 'req-h-call-5-2')">Req Headers</div>
+                  <div class="http-tab" onclick="switchTab(this, 'req-b-call-5-2')">Req Body</div>
+                  <div class="http-tab" onclick="switchTab(this, 'res-h-call-5-2')">Res Headers</div>
+                  <div class="http-tab" onclick="switchTab(this, 'res-b-call-5-2')">Res Body</div>
+                </div>
+
+                <div id="req-h-call-5-2" class="http-tab-content active">
+                  <table class="http-kv-table">
+                    <tr><th>Header</th><th>Value</th></tr>
+                    
+                    <tr><td>User-Agent</td><td>python-requests/2.34.2</td></tr>
+                    
+                    <tr><td>Accept-Encoding</td><td>gzip, deflate</td></tr>
+                    
+                    <tr><td>Accept</td><td>application/json</td></tr>
+                    
+                    <tr><td>Connection</td><td>keep-alive</td></tr>
+                    
+                    <tr><td>Content-Type</td><td>application/json</td></tr>
+                    
+                  </table>
+                </div>
+
+                <div id="req-b-call-5-2" class="http-tab-content">
+                  <pre class="http-body-pre">—</pre>
+                </div>
+
+                <div id="res-h-call-5-2" class="http-tab-content">
+                  <table class="http-kv-table">
+                    <tr><th>Header</th><th>Value</th></tr>
+                    
+                    <tr><td>Access-Control-Allow-Origin</td><td>*</td></tr>
+                    
+                    <tr><td>Cache-Control</td><td>public, max-age=0, must-revalidate</td></tr>
+                    
+                    <tr><td>Date</td><td>Sun, 05 Jul 2026 08:56:12 GMT</td></tr>
+                    
+                    <tr><td>Server</td><td>Vercel</td></tr>
+                    
+                    <tr><td>Strict-Transport-Security</td><td>max-age=63072000</td></tr>
+                    
+                    <tr><td>X-Powered-By</td><td>Express</td></tr>
+                    
+                    <tr><td>X-Ratelimit-Limit</td><td>60</td></tr>
+                    
+                    <tr><td>X-Ratelimit-Remaining</td><td>45</td></tr>
+                    
+                    <tr><td>X-Ratelimit-Reset</td><td>59</td></tr>
+                    
+                    <tr><td>X-Vercel-Cache</td><td>MISS</td></tr>
+                    
+                    <tr><td>X-Vercel-Id</td><td>sfo1::iad1::fztxf-1783241772222-62fe45432684</td></tr>
+                    
+                  </table>
+                </div>
+
+                <div id="res-b-call-5-2" class="http-tab-content">
+                  <pre class="http-body-pre">—</pre>
+                </div>
+              </div>
+            </div>
+            
+
+            
+            
+            <div class="detail-section">
+              <div class="detail-label">ASSERTIONS</div>
+              <div class="assert-list">
+                
+                <div class="assert-row assert-pass">
+                  <span class="assert-icon">✅</span>
+                  <span class="assert-name">status_is</span>
+                  
+                  <span class="assert-detail">
+                    
+                    
+                    
+                    
+                    
+                      expected=<span class="exp">200</span>
+                      &nbsp; actual=<span class="got ">200</span>
+                    
+                  </span>
+                  
+                </div>
+                
+                
+                <div class="assert-row assert-pass">
+                  <span class="assert-icon">✅</span>
+                  <span class="assert-name">key_equals</span>
+                  
+                  <span class="assert-detail">
+                    
+                    
+                    
+                    
+                      key=<span class="exp">id</span> &nbsp;
+                    
+                    
+                      expected=<span class="exp">1025</span>
+                      &nbsp; actual=<span class="got ">1025</span>
+                    
+                  </span>
+                  
+                </div>
+                
+                
+                <div class="assert-row assert-pass">
+                  <span class="assert-icon">✅</span>
+                  <span class="assert-name">key_equals</span>
+                  
+                  <span class="assert-detail">
+                    
+                    
+                    
+                    
+                      key=<span class="exp">status</span> &nbsp;
+                    
+                    
+                      expected=<span class="exp">inactive</span>
+                      &nbsp; actual=<span class="got ">inactive</span>
+                    
+                  </span>
+                  
+                </div>
+                
+                
+                <div class="assert-row assert-pass">
+                  <span class="assert-icon">✅</span>
+                  <span class="assert-name">key_equals</span>
+                  
+                  <span class="assert-detail">
+                    
+                    
+                    
+                    
+                      key=<span class="exp">name</span> &nbsp;
+                    
+                    
+                      expected=<span class="exp">James Garcia</span>
+                      &nbsp; actual=<span class="got ">James Garcia</span>
+                    
+                  </span>
+                  
+                </div>
+                
+                
+                <div class="assert-row assert-pass">
+                  <span class="assert-icon">✅</span>
+                  <span class="assert-name">key_equals</span>
+                  
+                  <span class="assert-detail">
+                    
+                    
+                    
+                    
+                      key=<span class="exp">email</span> &nbsp;
+                    
+                    
+                      expected=<span class="exp">james.garcia.1bbde0c7@hotmail.com</span>
+                      &nbsp; actual=<span class="got ">james.garcia.1bbde0c7@hotmail.com</span>
+                    
+                  </span>
+                  
+                </div>
+                
+                
+                <div class="assert-row assert-pass">
+                  <span class="assert-icon">✅</span>
+                  <span class="assert-name">key_equals</span>
+                  
+                  <span class="assert-detail">
+                    
+                    
+                    
+                    
+                      key=<span class="exp">gender</span> &nbsp;
+                    
+                    
+                      expected=<span class="exp">male</span>
+                      &nbsp; actual=<span class="got ">male</span>
+                    
+                  </span>
+                  
+                </div>
+                
+                
+              </div>
+            </div>
+            
+
+            
+            
+            <div class="detail-section">
+              <div class="detail-label log-label">LOGS</div>
+              <pre class="code-block log-block">--- Captured log setup ---
+DEBUG    pytest_api_core.client:api_client.py:147 → POST https://gorest.in/public/v2/users  headers={&#39;User-Agent&#39;: &#39;python-requests/2.34.2&#39;, &#39;Accept-Encoding&#39;: &#39;gzip, deflate&#39;, &#39;Accept&#39;: &#39;application/json&#39;, &#39;Connection&#39;: &#39;keep-alive&#39;, &#39;Content-Type&#39;: &#39;application/json&#39;}  body={&#39;name&#39;: &#39;James Garcia&#39;, &#39;email&#39;: &#39;james.garcia.1bbde0c7@hotmail.com&#39;, &#39;gender&#39;: &#39;male&#39;, &#39;status&#39;: &#39;active&#39;}
+DEBUG    urllib3.connectionpool:connectionpool.py:544 https://gorest.in:443 &#34;POST /public/v2/users HTTP/1.1&#34; 201 111
+INFO     pytest_api_core.client:api_client.py:162 ← POST https://gorest.in/public/v2/users  201  (114.9 ms)
+DEBUG    pytest_api_core.client:api_client.py:166    response body: {
+  &#34;id&#34;: 1025,
+  &#34;name&#34;: &#34;James Garcia&#34;,
+  &#34;email&#34;: &#34;james.garcia.1bbde0c7@hotmail.com&#34;,
+  &#34;gender&#34;: &#34;male&#34;,
+  &#34;status&#34;: &#34;active&#34;
+}
+--- Captured log call ---
+DEBUG    pytest_api_core.client:api_client.py:147 → PATCH https://gorest.in/public/v2/users/1025  headers={&#39;User-Agent&#39;: &#39;python-requests/2.34.2&#39;, &#39;Accept-Encoding&#39;: &#39;gzip, deflate&#39;, &#39;Accept&#39;: &#39;application/json&#39;, &#39;Connection&#39;: &#39;keep-alive&#39;, &#39;Content-Type&#39;: &#39;application/json&#39;}  body={&#39;status&#39;: &#39;inactive&#39;}
+DEBUG    urllib3.connectionpool:connectionpool.py:544 https://gorest.in:443 &#34;PATCH /public/v2/users/1025 HTTP/1.1&#34; 200 113
+INFO     pytest_api_core.client:api_client.py:162 ← PATCH https://gorest.in/public/v2/users/1025  200  (118.1 ms)
+DEBUG    pytest_api_core.client:api_client.py:166    response body: {
+  &#34;id&#34;: 1025,
+  &#34;name&#34;: &#34;James Garcia&#34;,
+  &#34;email&#34;: &#34;james.garcia.1bbde0c7@hotmail.com&#34;,
+  &#34;gender&#34;: &#34;male&#34;,
+  &#34;status&#34;: &#34;inactive&#34;
+}
+--- Captured log teardown ---
+DEBUG    pytest_api_core.client:api_client.py:147 → DELETE https://gorest.in/public/v2/users/1025  headers={&#39;User-Agent&#39;: &#39;python-requests/2.34.2&#39;, &#39;Accept-Encoding&#39;: &#39;gzip, deflate&#39;, &#39;Accept&#39;: &#39;application/json&#39;, &#39;Connection&#39;: &#39;keep-alive&#39;, &#39;Content-Type&#39;: &#39;application/json&#39;}  body=None
+DEBUG    urllib3.connectionpool:connectionpool.py:544 https://gorest.in:443 &#34;DELETE /public/v2/users/1025 HTTP/1.1&#34; 204 0
+INFO     pytest_api_core.client:api_client.py:162 ← DELETE https://gorest.in/public/v2/users/1025  204  (114.8 ms)
+DEBUG    pytest_api_core.client:api_client.py:166    response body:
+</pre>
+            </div>
+            
+
+            
+            
+            
+
+            
+            
+
+          </div>
+        </td>
+      </tr>
+      
+      
+      
+      
+      <tr class="result-row passed"
+          onclick="toggleDetail('detail-6')"
+          style="cursor:pointer"
+          data-outcome="passed">
+        <td>
+          <span class="badge badge-pass badge-pass">
+            PASSED
+          </span>
+        </td>
+        <td class="test-name">
+          
+          <span class="test-chevron" id="chev-detail-6">▶</span>
+          
+          tests/users/test_users.py::TestUsers::test_delete_user
+          
+          <span class="marker">user</span>
+          
+        </td>
+        <td class="duration">0.485s</td>
+        <td style="color:var(--text-muted);font-size:12px">
+          4
+        </td>
+      </tr>
+      
+      <tr id="detail-6" class="detail-row" style="display:none">
+        <td colspan="4">
+          <div class="detail-body">
+
+            
+            
+            
+            
+            
+            
+            <div class="http-banner">
+              <div class="http-headline" onclick="toggleHttp('call-6-0', this)">
+                <span class="method-badge method-POST">POST</span>
+                <span class="http-url">https://gorest.in/public/v2/users</span>
+                <span class="status-chip status-2xx">201</span>
+                <span class="elapsed-chip">114.7 ms</span>
+                <span class="http-chevron" id="chev-call-6-0">▶</span>
+              </div>
+              <div class="http-body" id="call-6-0">
+                <div class="http-tabs">
+                  <div class="http-tab active" onclick="switchTab(this, 'req-h-call-6-0')">Req Headers</div>
+                  <div class="http-tab" onclick="switchTab(this, 'req-b-call-6-0')">Req Body</div>
+                  <div class="http-tab" onclick="switchTab(this, 'res-h-call-6-0')">Res Headers</div>
+                  <div class="http-tab" onclick="switchTab(this, 'res-b-call-6-0')">Res Body</div>
+                </div>
+
+                <div id="req-h-call-6-0" class="http-tab-content active">
+                  <table class="http-kv-table">
+                    <tr><th>Header</th><th>Value</th></tr>
+                    
+                    <tr><td>User-Agent</td><td>python-requests/2.34.2</td></tr>
+                    
+                    <tr><td>Accept-Encoding</td><td>gzip, deflate</td></tr>
+                    
+                    <tr><td>Accept</td><td>application/json</td></tr>
+                    
+                    <tr><td>Connection</td><td>keep-alive</td></tr>
+                    
+                    <tr><td>Content-Type</td><td>application/json</td></tr>
+                    
+                  </table>
+                </div>
+
+                <div id="req-b-call-6-0" class="http-tab-content">
+                  <pre class="http-body-pre">{
+  &#34;name&#34;: &#34;Jeremy Rodriguez&#34;,
+  &#34;email&#34;: &#34;jeremy.rodriguez.ccb2cab8@gmail.com&#34;,
+  &#34;gender&#34;: &#34;male&#34;,
+  &#34;status&#34;: &#34;active&#34;
+}</pre>
+                </div>
+
+                <div id="res-h-call-6-0" class="http-tab-content">
+                  <table class="http-kv-table">
+                    <tr><th>Header</th><th>Value</th></tr>
+                    
+                    <tr><td>Access-Control-Allow-Origin</td><td>*</td></tr>
+                    
+                    <tr><td>Cache-Control</td><td>public, max-age=0, must-revalidate</td></tr>
+                    
+                    <tr><td>Content-Length</td><td>117</td></tr>
+                    
+                    <tr><td>Content-Type</td><td>application/json; charset=utf-8</td></tr>
+                    
+                    <tr><td>Date</td><td>Sun, 05 Jul 2026 08:56:12 GMT</td></tr>
+                    
+                    <tr><td>Etag</td><td>W/&#34;75-b8dlv7zdiLzD8qEaTkA4MOBwRAY&#34;</td></tr>
+                    
+                    <tr><td>Server</td><td>Vercel</td></tr>
+                    
+                    <tr><td>Strict-Transport-Security</td><td>max-age=63072000</td></tr>
+                    
+                    <tr><td>X-Powered-By</td><td>Express</td></tr>
+                    
+                    <tr><td>X-Ratelimit-Limit</td><td>60</td></tr>
+                    
+                    <tr><td>X-Ratelimit-Remaining</td><td>44</td></tr>
+                    
+                    <tr><td>X-Ratelimit-Reset</td><td>59</td></tr>
+                    
+                    <tr><td>X-Vercel-Cache</td><td>MISS</td></tr>
+                    
+                    <tr><td>X-Vercel-Id</td><td>sfo1::iad1::fztxf-1783241772339-8a17c6252b07</td></tr>
+                    
+                  </table>
+                </div>
+
+                <div id="res-b-call-6-0" class="http-tab-content">
+                  <pre class="http-body-pre">{
+  &#34;id&#34;: 1026,
+  &#34;name&#34;: &#34;Jeremy Rodriguez&#34;,
+  &#34;email&#34;: &#34;jeremy.rodriguez.ccb2cab8@gmail.com&#34;,
+  &#34;gender&#34;: &#34;male&#34;,
+  &#34;status&#34;: &#34;active&#34;
+}</pre>
+                </div>
+              </div>
+            </div>
+            
+            
+            
+            
+            
+            <div class="http-banner">
+              <div class="http-headline" onclick="toggleHttp('call-6-1', this)">
+                <span class="method-badge method-DELETE">DELETE</span>
+                <span class="http-url">https://gorest.in/public/v2/users/1026</span>
+                <span class="status-chip status-2xx">204</span>
+                <span class="elapsed-chip">125.0 ms</span>
+                <span class="http-chevron" id="chev-call-6-1">▶</span>
+              </div>
+              <div class="http-body" id="call-6-1">
+                <div class="http-tabs">
+                  <div class="http-tab active" onclick="switchTab(this, 'req-h-call-6-1')">Req Headers</div>
+                  <div class="http-tab" onclick="switchTab(this, 'req-b-call-6-1')">Req Body</div>
+                  <div class="http-tab" onclick="switchTab(this, 'res-h-call-6-1')">Res Headers</div>
+                  <div class="http-tab" onclick="switchTab(this, 'res-b-call-6-1')">Res Body</div>
+                </div>
+
+                <div id="req-h-call-6-1" class="http-tab-content active">
+                  <table class="http-kv-table">
+                    <tr><th>Header</th><th>Value</th></tr>
+                    
+                    <tr><td>User-Agent</td><td>python-requests/2.34.2</td></tr>
+                    
+                    <tr><td>Accept-Encoding</td><td>gzip, deflate</td></tr>
+                    
+                    <tr><td>Accept</td><td>application/json</td></tr>
+                    
+                    <tr><td>Connection</td><td>keep-alive</td></tr>
+                    
+                    <tr><td>Content-Type</td><td>application/json</td></tr>
+                    
+                  </table>
+                </div>
+
+                <div id="req-b-call-6-1" class="http-tab-content">
+                  <pre class="http-body-pre">—</pre>
+                </div>
+
+                <div id="res-h-call-6-1" class="http-tab-content">
+                  <table class="http-kv-table">
+                    <tr><th>Header</th><th>Value</th></tr>
+                    
+                    <tr><td>Access-Control-Allow-Origin</td><td>*</td></tr>
+                    
+                    <tr><td>Cache-Control</td><td>public, max-age=0, must-revalidate</td></tr>
+                    
+                    <tr><td>Date</td><td>Sun, 05 Jul 2026 08:56:12 GMT</td></tr>
+                    
+                    <tr><td>Server</td><td>Vercel</td></tr>
+                    
+                    <tr><td>Strict-Transport-Security</td><td>max-age=63072000</td></tr>
+                    
+                    <tr><td>X-Powered-By</td><td>Express</td></tr>
+                    
+                    <tr><td>X-Ratelimit-Limit</td><td>60</td></tr>
+                    
+                    <tr><td>X-Ratelimit-Remaining</td><td>43</td></tr>
+                    
+                    <tr><td>X-Ratelimit-Reset</td><td>58</td></tr>
+                    
+                    <tr><td>X-Vercel-Cache</td><td>MISS</td></tr>
+                    
+                    <tr><td>X-Vercel-Id</td><td>sfo1::iad1::9g8xh-1783241772455-c5708a58b2f9</td></tr>
+                    
+                  </table>
+                </div>
+
+                <div id="res-b-call-6-1" class="http-tab-content">
+                  <pre class="http-body-pre">—</pre>
+                </div>
+              </div>
+            </div>
+            
+            
+            
+            
+            
+            <div class="http-banner">
+              <div class="http-headline" onclick="toggleHttp('call-6-2', this)">
+                <span class="method-badge method-GET">GET</span>
+                <span class="http-url">https://gorest.in/public/v2/users/1026</span>
+                <span class="status-chip status-4xx">404</span>
+                <span class="elapsed-chip">114.2 ms</span>
+                <span class="http-chevron" id="chev-call-6-2">▶</span>
+              </div>
+              <div class="http-body" id="call-6-2">
+                <div class="http-tabs">
+                  <div class="http-tab active" onclick="switchTab(this, 'req-h-call-6-2')">Req Headers</div>
+                  <div class="http-tab" onclick="switchTab(this, 'req-b-call-6-2')">Req Body</div>
+                  <div class="http-tab" onclick="switchTab(this, 'res-h-call-6-2')">Res Headers</div>
+                  <div class="http-tab" onclick="switchTab(this, 'res-b-call-6-2')">Res Body</div>
+                </div>
+
+                <div id="req-h-call-6-2" class="http-tab-content active">
+                  <table class="http-kv-table">
+                    <tr><th>Header</th><th>Value</th></tr>
+                    
+                    <tr><td>User-Agent</td><td>python-requests/2.34.2</td></tr>
+                    
+                    <tr><td>Accept-Encoding</td><td>gzip, deflate</td></tr>
+                    
+                    <tr><td>Accept</td><td>application/json</td></tr>
+                    
+                    <tr><td>Connection</td><td>keep-alive</td></tr>
+                    
+                    <tr><td>Content-Type</td><td>application/json</td></tr>
+                    
+                  </table>
+                </div>
+
+                <div id="req-b-call-6-2" class="http-tab-content">
+                  <pre class="http-body-pre">—</pre>
+                </div>
+
+                <div id="res-h-call-6-2" class="http-tab-content">
+                  <table class="http-kv-table">
+                    <tr><th>Header</th><th>Value</th></tr>
+                    
+                    <tr><td>Access-Control-Allow-Origin</td><td>*</td></tr>
+                    
+                    <tr><td>Cache-Control</td><td>public, max-age=0, must-revalidate</td></tr>
+                    
+                    <tr><td>Content-Length</td><td>32</td></tr>
+                    
+                    <tr><td>Content-Type</td><td>application/json; charset=utf-8</td></tr>
+                    
+                    <tr><td>Date</td><td>Sun, 05 Jul 2026 08:56:12 GMT</td></tr>
+                    
+                    <tr><td>Etag</td><td>W/&#34;20-i+W/6oh0vBd/sJur0QM8IcJopJA&#34;</td></tr>
+                    
+                    <tr><td>Server</td><td>Vercel</td></tr>
+                    
+                    <tr><td>Strict-Transport-Security</td><td>max-age=63072000</td></tr>
+                    
+                    <tr><td>X-Powered-By</td><td>Express</td></tr>
+                    
+                    <tr><td>X-Ratelimit-Limit</td><td>60</td></tr>
+                    
+                    <tr><td>X-Ratelimit-Remaining</td><td>42</td></tr>
+                    
+                    <tr><td>X-Ratelimit-Reset</td><td>58</td></tr>
+                    
+                    <tr><td>X-Vercel-Cache</td><td>BYPASS</td></tr>
+                    
+                    <tr><td>X-Vercel-Id</td><td>sfo1::iad1::9g8xh-1783241772580-aec529fb319e</td></tr>
+                    
+                  </table>
+                </div>
+
+                <div id="res-b-call-6-2" class="http-tab-content">
+                  <pre class="http-body-pre">{
+  &#34;message&#34;: &#34;Resource not found&#34;
+}</pre>
+                </div>
+              </div>
+            </div>
+            
+            
+            
+            
+            
+            <div class="http-banner">
+              <div class="http-headline" onclick="toggleHttp('call-6-3', this)">
+                <span class="method-badge method-DELETE">DELETE</span>
+                <span class="http-url">https://gorest.in/public/v2/users/1026</span>
+                <span class="status-chip status-4xx">404</span>
+                <span class="elapsed-chip">125.7 ms</span>
+                <span class="http-chevron" id="chev-call-6-3">▶</span>
+              </div>
+              <div class="http-body" id="call-6-3">
+                <div class="http-tabs">
+                  <div class="http-tab active" onclick="switchTab(this, 'req-h-call-6-3')">Req Headers</div>
+                  <div class="http-tab" onclick="switchTab(this, 'req-b-call-6-3')">Req Body</div>
+                  <div class="http-tab" onclick="switchTab(this, 'res-h-call-6-3')">Res Headers</div>
+                  <div class="http-tab" onclick="switchTab(this, 'res-b-call-6-3')">Res Body</div>
+                </div>
+
+                <div id="req-h-call-6-3" class="http-tab-content active">
+                  <table class="http-kv-table">
+                    <tr><th>Header</th><th>Value</th></tr>
+                    
+                    <tr><td>User-Agent</td><td>python-requests/2.34.2</td></tr>
+                    
+                    <tr><td>Accept-Encoding</td><td>gzip, deflate</td></tr>
+                    
+                    <tr><td>Accept</td><td>application/json</td></tr>
+                    
+                    <tr><td>Connection</td><td>keep-alive</td></tr>
+                    
+                    <tr><td>Content-Type</td><td>application/json</td></tr>
+                    
+                  </table>
+                </div>
+
+                <div id="req-b-call-6-3" class="http-tab-content">
+                  <pre class="http-body-pre">—</pre>
+                </div>
+
+                <div id="res-h-call-6-3" class="http-tab-content">
+                  <table class="http-kv-table">
+                    <tr><th>Header</th><th>Value</th></tr>
+                    
+                    <tr><td>Access-Control-Allow-Origin</td><td>*</td></tr>
+                    
+                    <tr><td>Cache-Control</td><td>public, max-age=0, must-revalidate</td></tr>
+                    
+                    <tr><td>Content-Length</td><td>32</td></tr>
+                    
+                    <tr><td>Content-Type</td><td>application/json; charset=utf-8</td></tr>
+                    
+                    <tr><td>Date</td><td>Sun, 05 Jul 2026 08:56:12 GMT</td></tr>
+                    
+                    <tr><td>Etag</td><td>W/&#34;20-i+W/6oh0vBd/sJur0QM8IcJopJA&#34;</td></tr>
+                    
+                    <tr><td>Server</td><td>Vercel</td></tr>
+                    
+                    <tr><td>Strict-Transport-Security</td><td>max-age=63072000</td></tr>
+                    
+                    <tr><td>X-Powered-By</td><td>Express</td></tr>
+                    
+                    <tr><td>X-Ratelimit-Limit</td><td>60</td></tr>
+                    
+                    <tr><td>X-Ratelimit-Remaining</td><td>41</td></tr>
+                    
+                    <tr><td>X-Ratelimit-Reset</td><td>58</td></tr>
+                    
+                    <tr><td>X-Vercel-Cache</td><td>MISS</td></tr>
+                    
+                    <tr><td>X-Vercel-Id</td><td>sfo1::iad1::99vjv-1783241772696-4792230c776f</td></tr>
+                    
+                  </table>
+                </div>
+
+                <div id="res-b-call-6-3" class="http-tab-content">
+                  <pre class="http-body-pre">{
+  &#34;message&#34;: &#34;Resource not found&#34;
+}</pre>
+                </div>
+              </div>
+            </div>
+            
+
+            
+            
+            <div class="detail-section">
+              <div class="detail-label">ASSERTIONS</div>
+              <div class="assert-list">
+                
+                <div class="assert-row assert-pass">
+                  <span class="assert-icon">✅</span>
+                  <span class="assert-name">status_is</span>
+                  
+                  <span class="assert-detail">
+                    
+                    
+                    
+                    
+                    
+                      expected=<span class="exp">204</span>
+                      &nbsp; actual=<span class="got ">204</span>
+                    
+                  </span>
+                  
+                </div>
+                
+                
+                <div class="assert-row assert-pass">
+                  <span class="assert-icon">✅</span>
+                  <span class="assert-name">status_is</span>
+                  
+                  <span class="assert-detail">
+                    
+                    
+                    
+                    
+                    
+                      expected=<span class="exp">404</span>
+                      &nbsp; actual=<span class="got ">404</span>
+                    
+                  </span>
+                  
+                </div>
+                
+                
+              </div>
+            </div>
+            
+
+            
+            
+            <div class="detail-section">
+              <div class="detail-label log-label">LOGS</div>
+              <pre class="code-block log-block">--- Captured log setup ---
+DEBUG    pytest_api_core.client:api_client.py:147 → POST https://gorest.in/public/v2/users  headers={&#39;User-Agent&#39;: &#39;python-requests/2.34.2&#39;, &#39;Accept-Encoding&#39;: &#39;gzip, deflate&#39;, &#39;Accept&#39;: &#39;application/json&#39;, &#39;Connection&#39;: &#39;keep-alive&#39;, &#39;Content-Type&#39;: &#39;application/json&#39;}  body={&#39;name&#39;: &#39;Jeremy Rodriguez&#39;, &#39;email&#39;: &#39;jeremy.rodriguez.ccb2cab8@gmail.com&#39;, &#39;gender&#39;: &#39;male&#39;, &#39;status&#39;: &#39;active&#39;}
+DEBUG    urllib3.connectionpool:connectionpool.py:544 https://gorest.in:443 &#34;POST /public/v2/users HTTP/1.1&#34; 201 117
+INFO     pytest_api_core.client:api_client.py:162 ← POST https://gorest.in/public/v2/users  201  (114.7 ms)
+DEBUG    pytest_api_core.client:api_client.py:166    response body: {
+  &#34;id&#34;: 1026,
+  &#34;name&#34;: &#34;Jeremy Rodriguez&#34;,
+  &#34;email&#34;: &#34;jeremy.rodriguez.ccb2cab8@gmail.com&#34;,
+  &#34;gender&#34;: &#34;male&#34;,
+  &#34;status&#34;: &#34;active&#34;
+}
+--- Captured log call ---
+DEBUG    pytest_api_core.client:api_client.py:147 → DELETE https://gorest.in/public/v2/users/1026  headers={&#39;User-Agent&#39;: &#39;python-requests/2.34.2&#39;, &#39;Accept-Encoding&#39;: &#39;gzip, deflate&#39;, &#39;Accept&#39;: &#39;application/json&#39;, &#39;Connection&#39;: &#39;keep-alive&#39;, &#39;Content-Type&#39;: &#39;application/json&#39;}  body=None
+DEBUG    urllib3.connectionpool:connectionpool.py:544 https://gorest.in:443 &#34;DELETE /public/v2/users/1026 HTTP/1.1&#34; 204 0
+INFO     pytest_api_core.client:api_client.py:162 ← DELETE https://gorest.in/public/v2/users/1026  204  (125.0 ms)
+DEBUG    pytest_api_core.client:api_client.py:166    response body: 
+DEBUG    pytest_api_core.client:api_client.py:147 → GET https://gorest.in/public/v2/users/1026  headers={&#39;User-Agent&#39;: &#39;python-requests/2.34.2&#39;, &#39;Accept-Encoding&#39;: &#39;gzip, deflate&#39;, &#39;Accept&#39;: &#39;application/json&#39;, &#39;Connection&#39;: &#39;keep-alive&#39;, &#39;Content-Type&#39;: &#39;application/json&#39;}  body=None
+DEBUG    urllib3.connectionpool:connectionpool.py:544 https://gorest.in:443 &#34;GET /public/v2/users/1026 HTTP/1.1&#34; 404 32
+INFO     pytest_api_core.client:api_client.py:162 ← GET https://gorest.in/public/v2/users/1026  404  (114.2 ms)
+DEBUG    pytest_api_core.client:api_client.py:166    response body: {
+  &#34;message&#34;: &#34;Resource not found&#34;
+}
+--- Captured log teardown ---
+DEBUG    pytest_api_core.client:api_client.py:147 → DELETE https://gorest.in/public/v2/users/1026  headers={&#39;User-Agent&#39;: &#39;python-requests/2.34.2&#39;, &#39;Accept-Encoding&#39;: &#39;gzip, deflate&#39;, &#39;Accept&#39;: &#39;application/json&#39;, &#39;Connection&#39;: &#39;keep-alive&#39;, &#39;Content-Type&#39;: &#39;application/json&#39;}  body=None
+DEBUG    urllib3.connectionpool:connectionpool.py:544 https://gorest.in:443 &#34;DELETE /public/v2/users/1026 HTTP/1.1&#34; 404 32
+INFO     pytest_api_core.client:api_client.py:162 ← DELETE https://gorest.in/public/v2/users/1026  404  (125.7 ms)
+DEBUG    pytest_api_core.client:api_client.py:166    response body: {
+  &#34;message&#34;: &#34;Resource not found&#34;
+}
+</pre>
+            </div>
+            
+
+            
+            
+            
+
+            
+            
+
+          </div>
+        </td>
+      </tr>
+      
+      
+    </tbody>
+  </table>
+</div>
+
+<footer>pytest-api-core &mdash; API Test Report</footer>
+
+<script>
+var currentFilter = 'all';
+
+function toggleDetail(id) {
+  var el = document.getElementById(id);
+  var chev = document.getElementById('chev-' + id);
+  if (!el) return;
+  var isOpen = el.style.display !== 'none';
+  el.style.display = isOpen ? 'none' : 'table-row';
+  if (chev) chev.classList.toggle('open', !isOpen);
+}
+
+function expandAll() {
+  document.querySelectorAll('.detail-row').forEach(function(row) {
+    var parentRow = row.previousElementSibling;
+    if (parentRow && parentRow.style.display !== 'none') {
+      row.style.display = 'table-row';
+      var id = row.getAttribute('id');
+      var chev = document.getElementById('chev-' + id);
+      if (chev) chev.classList.add('open');
+    }
+  });
+}
+
+function collapseAll() {
+  document.querySelectorAll('.detail-row').forEach(function(row) {
+    row.style.display = 'none';
+    var id = row.getAttribute('id');
+    var chev = document.getElementById('chev-' + id);
+    if (chev) chev.classList.remove('open');
+  });
+}
+
+function toggleHttp(id, headline) {
+  var body = document.getElementById(id);
+  var chev = document.getElementById('chev-' + id);
+  if (!body) return;
+  var open = body.classList.toggle('open');
+  if (chev) chev.classList.toggle('open', open);
+}
+
+function switchTab(tabEl, contentId) {
+  var banner = tabEl.closest('.http-banner');
+  banner.querySelectorAll('.http-tab').forEach(function(t) { t.classList.remove('active'); });
+  banner.querySelectorAll('.http-tab-content').forEach(function(c) { c.classList.remove('active'); });
+  tabEl.classList.add('active');
+  var el = document.getElementById(contentId);
+  if (el) el.classList.add('active');
+}
+
+function setFilter(outcome, btn) {
+  currentFilter = outcome;
+  document.querySelectorAll('.filter-btn').forEach(function(b) { b.classList.remove('active'); });
+  btn.classList.add('active');
+  applyFilters();
+}
+
+function filterTable() { applyFilters(); }
+
+function applyFilters() {
+  var query = document.getElementById('searchBox').value.toLowerCase();
+  document.querySelectorAll('#tableBody .result-row').forEach(function(row) {
+    var matchOutcome = currentFilter === 'all' || row.dataset.outcome === currentFilter;
+    var matchSearch = !query || row.innerText.toLowerCase().includes(query);
+    var show = matchOutcome && matchSearch;
+    row.style.display = show ? '' : 'none';
+    var onclick = row.getAttribute('onclick') || '';
+    var m = onclick.match(/'([^']+)'/);
+    if (m) {
+      var detail = document.getElementById(m[1]);
+      if (detail && !show) detail.style.display = 'none';
+    }
+  });
+}
+
+function toggleInfo() {
+  document.getElementById('infoPanel').classList.toggle('open');
+}
+
+document.addEventListener('click', function(e) {
+  var panel = document.getElementById('infoPanel');
+  if (!panel.classList.contains('open')) return;
+  var withinPanel = panel.contains(e.target);
+  var isToggleBtn = e.target.matches('.header-actions .theme-btn:first-child');
+  if (!withinPanel && !isToggleBtn) {
+    panel.classList.remove('open');
+  }
+});
+
+function toggleTheme() {
+  var html = document.documentElement;
+  var isDark = html.getAttribute('data-theme') === 'dark';
+  html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+  document.querySelector('.theme-btn').textContent = isDark ? '🌙 Dark' : '☀️ Light';
+}
+</script>
+</body>
+</html>
