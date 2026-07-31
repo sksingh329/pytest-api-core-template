@@ -91,6 +91,11 @@ jobs:
           mkdir -p "$dest_dir"
           cp "$report_file" "$dest_dir/"
 
+          # Skip Jekyll processing — our reports embed raw JSON/HTTP bodies that can
+          # contain Liquid-like {{ }} / {% %} sequences and intermittently break the
+          # legacy Jekyll-based Pages build.
+          touch gh-pages/.nojekyll
+
           python3 .github/scripts/generate_dashboard.py gh-pages
 
           cd gh-pages
