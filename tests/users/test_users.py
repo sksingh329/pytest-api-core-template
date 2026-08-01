@@ -1,6 +1,8 @@
 import pytest
 from pytest_api_core.assertions import assert_that
 
+from models.users import users_list_schema
+
 
 USERS_PATH = "/public/v2/users"
 
@@ -66,6 +68,15 @@ class TestUsers:
             .key_equals("name", user["name"]) \
             .key_equals("email", user["email"]) \
             .key_equals("gender", user["gender"])
+
+    def test_list_users(self, api_client):
+        response = api_client.get(USERS_PATH)
+        assert_that(response) \
+            .status_is(200) \
+            .content_type_contains("application/json") \
+            .is_json_list() \
+            .list_length_gte(1) \
+            .matches_schema(users_list_schema)
 
     def test_delete_user(self, api_client, created_user):
         user_id = created_user.json()["id"]
