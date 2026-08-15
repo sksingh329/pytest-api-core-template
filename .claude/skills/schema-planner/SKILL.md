@@ -26,6 +26,18 @@ This skill is **read-only against the repository** and **planning-only** — it 
 - Optional: sample request/response JSON or an OpenAPI spec fragment, if not already present in the plan/manual test case.
 - Optional: which specific Missing Components entry to resolve, if the plan has more than one Open schema-related item.
 
+## Session Requirement: testCaseBaseDir
+
+This skill requires `testCaseBaseDir` to be set in session metadata before doing anything else.
+
+- If `testCaseBaseDir` is not set, **stop immediately** — do not read the plan, do not proceed. Respond with exactly:
+  ```
+  testCaseBaseDir is not set for this session.
+
+  Set testCaseBaseDir before running this skill.
+  ```
+- If it is set, use it to resolve relative test-case directory references (an explicit path the user gives still takes precedence).
+
 ## File Discovery
 
 Given only a test-case directory or manual test case path, derive the plan deterministically — no explicit plan path needed:

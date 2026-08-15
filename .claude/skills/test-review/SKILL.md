@@ -22,6 +22,18 @@ This closes the loop: `test-planner` (plan) → `test-creator` (code) → `valid
 
 - A test-case directory, a manual test case path, a plan path, or a generated test file path — any one is enough (see File Discovery).
 
+## Session Requirement: testCaseBaseDir
+
+This skill requires `testCaseBaseDir` to be set in session metadata before doing anything else.
+
+- If `testCaseBaseDir` is not set, **stop immediately** — do not read the plan or the generated test. Respond with exactly:
+  ```
+  testCaseBaseDir is not set for this session.
+
+  Set testCaseBaseDir before running this skill.
+  ```
+- If it is set, use it to resolve relative test-case directory references (an explicit path the user gives still takes precedence).
+
 ## File Discovery
 
 Given only a test-case directory or manual test case path, derive everything deterministically, same convention as `test-creator`:

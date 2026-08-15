@@ -25,6 +25,18 @@ This skill is **read-only against the repository** and **planning-only** — it 
 - A test-case directory, or a manual test case path, or a plan path — any one is enough (see File Discovery).
 - Optional: which specific Missing Components entry to resolve, if the plan has more than one Open fixture-related item.
 
+## Session Requirement: testCaseBaseDir
+
+This skill requires `testCaseBaseDir` to be set in session metadata before doing anything else.
+
+- If `testCaseBaseDir` is not set, **stop immediately** — do not read the plan, do not proceed. Respond with exactly:
+  ```
+  testCaseBaseDir is not set for this session.
+
+  Set testCaseBaseDir before running this skill.
+  ```
+- If it is set, use it to resolve relative test-case directory references (an explicit path the user gives still takes precedence).
+
 ## File Discovery
 
 Given only a test-case directory or manual test case path, derive the plan deterministically — no explicit plan path needed:

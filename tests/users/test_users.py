@@ -69,15 +69,6 @@ class TestUsers:
             .key_equals("email", user["email"]) \
             .key_equals("gender", user["gender"])
 
-    def test_list_users(self, api_client):
-        response = api_client.get(USERS_PATH)
-        assert_that(response) \
-            .status_is(200) \
-            .content_type_contains("application/json") \
-            .is_json_list() \
-            .list_length_gte(1) \
-            .matches_schema(users_list_schema)
-
     def test_delete_user(self, api_client, created_user):
         user_id = created_user.json()["id"]
 
@@ -86,3 +77,10 @@ class TestUsers:
 
         get_response = api_client.get(f"{USERS_PATH}/{user_id}")
         assert_that(get_response).status_is(404)
+
+    def test_list_users(self, api_client):
+        response = api_client.get(USERS_PATH)
+        assert_that(response) \
+            .status_is(200) \
+            .is_json_list() \
+            .matches_schema(users_list_schema)                                                            

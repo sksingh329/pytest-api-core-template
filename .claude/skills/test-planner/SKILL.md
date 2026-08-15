@@ -33,6 +33,18 @@ If a required component is missing, record it under **Missing Components** and r
 
 If the user references an external manual-test directory, resolve its absolute path first (ask if ambiguous) — the plan file is written back into that same directory (see Output).
 
+## Session Requirement: testCaseBaseDir
+
+This skill requires `testCaseBaseDir` to be set in session metadata before doing anything else.
+
+- If `testCaseBaseDir` is not set, **stop immediately** — do not read the manual test case, do not analyze the repository, do not proceed. Respond with exactly:
+  ```
+  testCaseBaseDir is not set for this session.
+
+  Set testCaseBaseDir before running this skill.
+  ```
+- If it is set, treat it as the root for locating/resolving the manual test case directory (an explicit path the user gives still takes precedence; use `testCaseBaseDir` to resolve relative references).
+
 ## Procedure
 
 1. **Locate and read the manual test case.** If given a path, `Read` it directly. If given a directory, list it and identify the specific test case file(s) relevant to the request.

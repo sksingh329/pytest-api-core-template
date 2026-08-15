@@ -38,6 +38,18 @@ Example:
 /execution-review tests/users/ reports/report.xml
 ```
 
+## Session Requirement: testCaseBaseDir
+
+This skill requires `testCaseBaseDir` to be set in session metadata before doing anything else.
+
+- If `testCaseBaseDir` is not set, **stop immediately** — do not read the plan or the execution report. Respond with exactly:
+  ```
+  testCaseBaseDir is not set for this session.
+
+  Set testCaseBaseDir before running this skill.
+  ```
+- If it is set, use it to resolve relative test-case directory references (an explicit path the user gives still takes precedence).
+
 ## File Discovery
 
 Same convention as `test-creator`/`test-review`/`validation-planner`:
