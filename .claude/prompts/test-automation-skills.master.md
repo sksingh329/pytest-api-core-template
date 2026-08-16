@@ -1,5 +1,12 @@
 # Master Prompt: API Test Automation Skill Set
 
+> **Maintenance note:** this file is a snapshot of the skill set's design. Whenever any skill in
+> `.claude/skills/` (or the orchestrating agent, if one exists) changes — a new skill added, a
+> category/procedure/output trimmed or extended, a guardrail added — update the matching section
+> here in the same change. Treat drift between this file and the actual skills as a bug: this is
+> the file you'd hand to another project to reproduce the current pipeline, so it must describe
+> what the skills actually do today, not what they did when first written.
+
 ## Purpose
 
 This is a **generator prompt**, not a skill itself. Feed this whole file to any AI coding
@@ -121,7 +128,10 @@ the initial test-case directory or manual test-case file:
         ▼ (after the suite actually runs)
  [8] execution-review ────────► <test-name>.execution-coverage.md
 
- [9] test-pipeline  — orchestrates [2]–[7] end to end in one invocation, with loop/stop control
+ [9] test-pipeline  — orchestrates [1]–[7] end to end in one invocation: runs test-intent itself
+                       when no testcase.md exists yet (pausing for an explicit approval gate on
+                       the generated testcase.md before continuing), then plan → resolve →
+                       validate → create → review, with loop/stop control
  [10] rca (independent) — root-cause analysis of a failed execution report, no plan/testcase involved
 ```
 
@@ -261,22 +271,35 @@ code except where explicitly stated otherwise.
 
 ### 9. `test-pipeline` (orchestrator)
 
-- **Purpose:** Run stages 2–7 end to end for one test case in a single invocation, by literally
+- **Purpose:** Run stages 1–7 end to end for one test case in a single invocation, by literally
   invoking each constituent skill in sequence and making stop/go decisions — it performs none of
   the analysis or writing itself.
-- **Procedure:** run test-planner → resolve every Missing Components entry via
-  fixture-planner/schema-planner (stop if any entry has no resolving skill) → run
-  validation-planner (may pause for the user's confirmation on missing categories — wait for it,
-  never answer on the user's behalf) → run test-creator (create mode) → run test-review → if
-  `PASS`, stop and report success; if `FAIL`, apply loop control.
+- **Entry point:** if no `testcase.md` exists yet for the given input (a natural-language
+  request), run test-intent first, letting it pause for its own clarifying questions as needed.
+  If a valid `testcase.md` already exists, skip straight to test-planner.
+- **Approval gate (after test-intent):** once test-intent writes `testcase.md`, do not proceed
+  automatically — read it back, display its full contents together with its full path, and ask
+  the user to explicitly Approve and continue / request an edit / Cancel. Only continue to
+  test-planner on approval; on cancel, stop with the testcase left in place but the pipeline not
+  continued.
+- **Procedure:** (test-intent + approval gate, if needed) → run test-planner → resolve every
+  Missing Components entry via fixture-planner/schema-planner (stop if any entry has no resolving
+  skill) → run validation-planner (may pause for the user's confirmation on missing categories —
+  wait for it, never answer on the user's behalf) → run test-creator (create mode) → run
+  test-review → if `PASS`, stop and report success; if `FAIL`, apply loop control.
 - **Loop control:** distinguish a locally-fixable code finding (re-run test-creator fix mode,
   then test-review again) from a finding that traces to a bad plan resolution (route back to the
   relevant planner instead of "fixing" code around it). Hard cap the fix-review loop at a small,
   fixed number of attempts (e.g. 3); also stop immediately if two consecutive re-reviews report
   the identical failure with no progress — that means the fix isn't landing, not that another
   attempt will help.
+- **On success, show the code, not just the path.** When the pipeline reaches `PASS`/`PASS WITH
+  WARNINGS`, display the actual generated/modified test code (full file if newly created, a diff
+  of just the change if appended to an existing file or fix-mode-edited) alongside its full file
+  path — always the final state after any fix-mode loop iterations, never an intermediate one.
 - **Never:** do any stage's actual work itself; loop past the cap without asking the user; skip
-  a stage because it "looks fine" without actually invoking it.
+  a stage because it "looks fine" without actually invoking it; invent testcase fields itself
+  instead of deferring to test-intent/the user's approval.
 
 ### 10. `rca` (independent — no test-case/plan involvement)
 
@@ -319,6 +342,14 @@ code except where explicitly stated otherwise.
 
 ## How to Use This Prompt
 
+There are two modes. Use **Bootstrap Mode** for a repo with none of these skills yet, and
+**Update Mode** for a repo that already has some or all of them (from an earlier run of this
+same prompt, or hand-built equivalents). Always use *this one file* for both — never fork a
+second master prompt per repo; a second copy is a second source of truth that will silently
+drift from this one.
+
+### Bootstrap Mode (no skills exist yet)
+
 1. Point your AI assistant at the target repository (so it can discover real conventions:
    HTTP client, fixture patterns, schema/model layout, naming).
 2. Paste this entire file as the instruction, and ask it to generate one instruction file per
@@ -329,3 +360,42 @@ code except where explicitly stated otherwise.
    of which assistant runs it.
 4. Decide your project's `testCaseBaseDir` and make sure it's actually set at the start of every
    session before these skills are used — every gated skill will refuse to proceed without it.
+
+### Update Mode (skills already exist in the target repo)
+
+Goal: bring the repo's skills in line with this file's current spec, **without** blowing away
+repo-specific customizations that were added deliberately and aren't part of the shared contract.
+
+1. **Inventory first.** List the target repo's existing skill files and read each one in full.
+   Don't assume they match this file — a repo may be behind (an older version of this prompt),
+   ahead (extra project-specific categories/checks added on purpose), or missing skills entirely.
+2. **Diff each skill against its spec section here**, one at a time:
+   - **Missing skill entirely** → generate it fresh, same as Bootstrap Mode, for that one skill
+     only.
+   - **Exists but behind** (missing a procedure step, guardrail, category, or output section this
+     file now has) → apply the delta as a targeted edit, not a full-file rewrite. Preserve
+     everything else in the file untouched, including its existing frontmatter/wrapper format and
+     any file paths already in use downstream.
+   - **Exists and matches** → leave it alone. Don't touch a file just to "normalize" wording that
+     doesn't functionally differ.
+   - **Exists but diverges intentionally** (e.g. the repo added a 5th validation category, or a
+     stricter guardrail, that this master prompt doesn't mention) → do not silently strip it out.
+     Flag the divergence and ask whether it's a deliberate local extension (keep it) or drift to
+     correct (align it to this file). Never assume; this file doesn't know every repo's local
+     needs.
+3. **Never regenerate a whole skill file to apply a one-line change.** The point of Update Mode is
+   incremental sync — a full-file rewrite risks silently discarding local customizations you
+   didn't diff for.
+4. **Report the diff before writing anything**, then apply only what's confirmed: which skills
+   were missing (now generated), which were behind (now patched, listing exactly what changed),
+   which matched already, and which diverged and need a decision.
+5. Re-check `testCaseBaseDir` gating specifically — it's easy for an older skill set to predate
+   this requirement entirely; confirm every test-case-scoped skill has it before calling Update
+   Mode done.
+
+### Keeping This File Itself in Sync
+
+Any time a skill in *this* repo (the one this file was authored against) changes — a new skill
+added, a category/procedure/output trimmed or extended, a guardrail added — update the matching
+section here in the same change (see the maintenance note at the top of this file). That's what
+keeps Update Mode's diff meaningful for every other repo that adopts this file later.
