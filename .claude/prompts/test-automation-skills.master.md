@@ -102,6 +102,15 @@ the initial test-case directory or manual test-case file:
 ## Pipeline Overview
 
 ```
+ [0] test-case-designer ──────► test-design.md  (risk-aware QA scenarios, no automation detail)
+
+     completely independent of everything below — no skill reads test-design.md, no skill
+     invokes or is invoked by test-case-designer, and it is never part of test-pipeline.
+     If a human later chooses to turn a confirmed scenario into automation, that's a fresh,
+     unrelated plain-language request to test-intent below — not a handoff between skills.
+
+ ────────────────────────────────────────────────────────────────────────────────────────
+
  plain-language intent
         │
         ▼
@@ -142,6 +151,46 @@ the initial test-case directory or manual test-case file:
 For each skill below: generate one self-contained instruction file with the stated name,
 purpose, inputs, procedure, output, and guardrails. Keep every skill read-only against source
 code except where explicitly stated otherwise.
+
+### 0. `test-case-designer` (fully independent — no interaction with any other skill)
+
+- **Purpose:** Turn a raw requirement/acceptance-criteria into a risk-aware QA test design —
+  scenarios, priorities, coverage, traceability — through an interactive discussion with the
+  user. Produces `test-design.md`, never `testcase.md`.
+- **Fully independent.** Not part of `test-pipeline` or any other chain. Does not invoke, get
+  invoked by, read the output of, or write anything consumed by any other skill in this spec —
+  no skill reads `test-design.md`, and this skill reads no other skill's artifact (`.plan.md`,
+  `testcase.md`, etc.). It shares only the `testCaseBaseDir` session convention, nothing else.
+- **Has no dependency on** the automation framework at all: no Pytest, fixtures, `conftest.py`,
+  test classes/files, payload factories, or automation-specific schemas. Never generates
+  automation code and never creates `testcase.md`. If a human later wants a confirmed scenario
+  turned into automation, that happens as a fresh, separate plain-language request to
+  `test-intent` — a human decision outside this skill, never an automatic or implied handoff.
+- **Interaction model:** Understand → Analyze → Identify gaps → Discuss with user → Propose
+  scenarios → Refine → Confirm → Create. Never write the design document from the first pass
+  through the requirement — confirm understanding first, surface critical ambiguities and ask
+  about them before proposing scenarios, and do not create the file until the user confirms.
+- **Scenario analysis dimensions** (apply only where relevant to the requirement — never force
+  an irrelevant category in just to look thorough): positive, negative, boundary, equivalence
+  classes, validation, business rules, authorization, authentication, state/lifecycle,
+  concurrency, idempotency, integration/dependencies, security, recovery/error handling.
+- **Risk-based prioritization:** every scenario gets P0–P3 based on business/user/security
+  impact, data integrity, failure likelihood, and recovery difficulty — never default everything
+  to P0, and avoid generating large numbers of low-value scenarios just to appear comprehensive.
+- **Requirement traceability:** every scenario cites the requirement/acceptance-criterion it
+  validates (`REQ-1`, `REQ-2`, ... if the source has no identifier of its own) — never invent an
+  external requirement ID.
+- **Discussion stance:** behave like a senior QA engineer, not a scribe — challenge thin coverage
+  the user proposes, call out hidden risk, and ask about critical ambiguities rather than
+  guessing past them. Never invent missing requirement details.
+- **Output:** `{testCaseBaseDir}/design/{test-name}/test-design.md` — requirement understanding,
+  assumptions, open questions, numbered test scenarios (category/priority/preconditions/
+  steps/expected result/requirement reference), a coverage-summary table, a risk summary, test
+  data requirements, dependencies, out-of-scope items, and an "Automation Candidates" list (scenario
+  IDs only — never automation implementation detail).
+- **Never:** generate Pytest/automation code; design fixtures, automation classes, or files;
+  create `testcase.md`; invent missing requirement information; force irrelevant coverage
+  categories; create the file before the user has confirmed the design.
 
 ### 1. `test-intent`
 
