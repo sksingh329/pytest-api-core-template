@@ -2,6 +2,8 @@
 
 > A ready-to-use API test project built on [`pytest-api-core`](https://pypi.org/project/pytest-api-core/), targeting the [gorest.in](https://www.gorest.in/) mock REST API.
 
+📊 **[Test reports dashboard](https://githubreports.apicore.template.subodhsingh.in/)**: HTML reports published by CI runs.
+
 ## Features
 
 - Example test for `/public/v2/users` (more CRUD examples coming)
@@ -39,7 +41,7 @@ pytest -m smoke
 pytest --api-env=staging
 ```
 
-The HTML report is written to `reports/dev/report_<timestamp>.html`.
+The HTML report is written to `reports/dev/report_<timestamp>.html`, and a clickable link to it is printed at the end of the run. CI runs publish their reports to the [reports dashboard](https://githubreports.apicore.template.subodhsingh.in/).
 
 ---
 
