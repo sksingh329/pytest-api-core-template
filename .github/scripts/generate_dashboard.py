@@ -45,7 +45,7 @@ for path in reports:
         path.stat().st_mtime, tz=datetime.timezone.utc
     ).strftime("%Y-%m-%d %H:%M UTC")
     rows.append(
-        f"<tr><td><a href=\"/{html.escape(rel.as_posix())}\">{html.escape(rel.name)}</a></td>"
+        f"<tr><td><a href=\"/{html.escape(rel.as_posix())}\" target=\"_blank\" rel=\"noopener\">{html.escape(rel.name)}</a></td>"
         f"<td>{html.escape(run_slug)}</td><td>{published}</td></tr>"
     )
 
