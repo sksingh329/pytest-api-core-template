@@ -1,5 +1,5 @@
 # Core framework
-pytest-api-core[dotenv]==1.0.3
+pytest-api-core[dotenv]==1.1.1
 
 # Optional dev dependencies
 pytest>=7.0
