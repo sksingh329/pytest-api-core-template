@@ -16,6 +16,17 @@ from faker import Faker
 faker = Faker()
 
 
+def pytest_terminal_summary(terminalreporter, config):
+    """Print the HTML report as a file:// URL so terminals render it as a link."""
+    reporter = config.pluginmanager.get_plugin("api-html-reporter")
+    if reporter is None:
+        return
+    # The plugin exposes no public accessor for the resolved report path.
+    report_path = reporter._path.resolve()
+    if report_path.exists():
+        terminalreporter.write_line(f"API HTML report: {report_path.as_uri()}")
+
+
 @pytest.fixture
 def faker_seed():
     """Randomize Faker's seed per test instead of the plugin's fixed default (0)."""
